@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { AIController } from '../controllers/ai-controller';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
 import multer from 'multer';
 
 const router = Router();

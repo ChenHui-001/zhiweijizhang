@@ -1,8 +1,8 @@
 import { logger } from '../utils/logger';
 import { Router } from 'express';
 import { WechatController } from '../controllers/wechat.controller';
-import { authenticate } from '../middlewares/auth.middleware';
-import { dailyFirstVisitGift } from '../middlewares/daily-gift.middleware';
+import { authenticate } from '../middleware/auth.middleware';
+import { dailyFirstVisitGift } from '../middleware/daily-gift.middleware';
 import authRoutes from './auth.routes';
 import userRoutes from './user.routes';
 import userSettingRoutes from './user-setting.routes';

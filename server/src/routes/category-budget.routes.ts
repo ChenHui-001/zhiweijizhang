@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { CategoryBudgetController } from '../controllers/category-budget.controller';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
 const categoryBudgetController = new CategoryBudgetController();

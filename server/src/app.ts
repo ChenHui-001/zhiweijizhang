@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import path from 'path';
 import config from './config/config';
 import routes from './routes';
-import { trackApiCall } from './middlewares/access-tracking.middleware';
+import { trackApiCall } from './middleware/access-tracking.middleware';
 
 // 创建Express应用
 const app: Express = express();

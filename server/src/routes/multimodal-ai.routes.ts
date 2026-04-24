@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { MultimodalAIController } from '../controllers/multimodal-ai.controller';
-import { authenticate } from '../middlewares/auth.middleware';
-import { s3FileUpload } from '../middlewares/upload.middleware';
+import { authenticate } from '../middleware/auth.middleware';
+import { s3FileUpload } from '../middleware/upload.middleware';
 
 const router = Router();
 const multimodalAIController = new MultimodalAIController();

@@ -1,14 +1,14 @@
 import { logger } from '../utils/logger';
 import { Router } from 'express';
 import { WechatController } from '../controllers/wechat.controller';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
 import {
   parseWechatXML,
   verifyWechatSignature,
   wechatErrorHandler,
   wechatLogger,
-} from '../middlewares/wechat.middleware';
-import { sourceDetectionMiddleware } from '../middlewares/source-detection.middleware';
+} from '../middleware/wechat.middleware';
+import { sourceDetectionMiddleware } from '../middleware/source-detection.middleware';
 
 const router = Router();
 

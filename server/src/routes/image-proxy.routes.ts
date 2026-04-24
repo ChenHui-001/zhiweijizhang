@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { ImageProxyController } from '../controllers/image-proxy.controller';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
 const imageProxyController = new ImageProxyController();

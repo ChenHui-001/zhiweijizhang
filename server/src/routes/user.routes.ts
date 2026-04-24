@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { UserController } from '../controllers/user.controller';
-import { authenticate } from '../middlewares/auth.middleware';
-import { avatarUpload, s3AvatarUpload } from '../middlewares/upload.middleware';
+import { authenticate } from '../middleware/auth.middleware';
+import { avatarUpload, s3AvatarUpload } from '../middleware/upload.middleware';
 
 const router = Router();
 const userController = new UserController();

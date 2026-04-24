@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { TransactionController } from '../controllers/transaction.controller';
 import { TagController } from '../controllers/tag.controller';
 import { TransactionAttachmentController } from '../controllers/transaction-attachment.controller';
-import { authenticate } from '../middlewares/auth.middleware';
-import { s3AttachmentUpload } from '../middlewares/upload.middleware';
+import { authenticate } from '../middleware/auth.middleware';
+import { s3AttachmentUpload } from '../middleware/upload.middleware';
 
 const router = Router();
 const transactionController = new TransactionController();

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { SystemConfigController } from '../controllers/system-config.controller';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
 const systemConfigController = new SystemConfigController();

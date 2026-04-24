@@ -1,7 +1,7 @@
 import { logger } from '../utils/logger';
 import { Router, Request, Response } from 'express';
 import { MembershipService } from '../services/membership.service';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
 const membershipService = new MembershipService();

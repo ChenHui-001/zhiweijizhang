@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { FileStorageController } from '../controllers/file-storage.controller';
-import { authenticate } from '../middlewares/auth.middleware';
-import { s3FileUpload, s3AvatarUpload, s3AttachmentUpload } from '../middlewares/upload.middleware';
+import { authenticate } from '../middleware/auth.middleware';
+import { s3FileUpload, s3AvatarUpload, s3AttachmentUpload } from '../middleware/upload.middleware';
 
 const router = Router();
 const fileStorageController = new FileStorageController();

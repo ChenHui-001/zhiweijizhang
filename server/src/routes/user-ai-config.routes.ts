@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import userAIConfigController from '../controllers/user-ai-config.controller';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
 

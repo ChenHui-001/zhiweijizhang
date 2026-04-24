@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { versionController } from '../controllers/version.controller';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
 import { authenticateAdmin, requireAdmin } from '../admin/middleware/auth.admin.middleware';
 
 const router = Router();

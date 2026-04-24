@@ -1,6 +1,6 @@
 import { logger } from '../utils/logger';
 import { Router, Request, Response } from 'express';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
 import { PrismaClient, MemberType, NotificationType, RenewalType, RenewalStatus } from '@prisma/client';
 
 const router = Router();

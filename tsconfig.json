@@ -15,11 +15,9 @@
     "emitDecoratorMetadata": true,
     "baseUrl": ".",
     "paths": {
-      "@server/*": ["server/src/*"],
-      "@client/*": ["client/src/*"],
-      "@shared/*": ["shared/*"]
+      "@/*": ["server/src/*"]
     }
   },
-  "include": ["server/src/**/*", "client/src/**/*", "shared/**/*", "docs/fixes/修复预算参考/fix-budget-assignment-cjs.js"],
-  "exclude": ["node_modules", "dist", "apps/**/*", "packages/mobile/**/*"]
+  "include": ["server/src/**/*"],
+  "exclude": ["node_modules", "dist", "apps/**/*", "packages/**/*"]
 }

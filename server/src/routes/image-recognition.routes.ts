@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { ImageRecognitionController } from '../controllers/image-recognition.controller';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
 import { authenticateAdmin, requireAdmin } from '../admin/middleware/auth.admin.middleware';
 
 const router = Router();

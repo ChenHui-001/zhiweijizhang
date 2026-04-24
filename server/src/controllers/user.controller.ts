@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import { UserService } from '../services/user.service';
 import { CreateUserDto, UpdateUserDto, UpdateProfileDto } from '../models/user.model';
 import { UserSettingService } from '../services/user-setting.service';
-import { getFileUrl } from '../middlewares/upload.middleware';
+import { getFileUrl } from '../middleware/upload.middleware';
 import { FileStorageService } from '../services/file-storage.service';
 import { BUCKET_CONFIG, FileUploadRequestDto } from '../models/file-storage.model';
 import { comparePasswords } from '../utils/password';

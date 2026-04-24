@@ -1,7 +1,7 @@
 import { logger } from '../utils/logger';
 import express from 'express';
 import AccountingPointsService from '../services/accounting-points.service';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
 import type { Request, Response } from 'express';
 
 const router = express.Router();

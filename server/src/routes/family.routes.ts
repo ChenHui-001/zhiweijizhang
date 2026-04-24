@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { FamilyController } from '../controllers/family.controller';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
 const familyController = new FamilyController();

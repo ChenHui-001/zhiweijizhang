@@ -5,7 +5,7 @@
 
 import { logger } from '../utils/logger';
 import { Router, Request, Response } from 'express';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
 import { H5PaymentService } from '../services/h5-payment.service';
 import { getAndroidH5ProductById, getProductPrice, AndroidH5Product } from '../config/android-h5-products';
 import { AppError } from '../errors/AppError';

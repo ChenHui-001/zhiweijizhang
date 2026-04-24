@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { FeedbackController } from '../controllers/feedback.controller';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
 const feedbackController = new FeedbackController();
