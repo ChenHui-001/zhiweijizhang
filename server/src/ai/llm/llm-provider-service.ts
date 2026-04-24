@@ -58,45 +58,10 @@ export class LLMProviderService {
    * 确定服务类型
    * @param settings LLM设置
    * @returns 服务类型
+   * @deprecated 强制使用自定义AI，此方法始终返回 'custom'
    */
   private async determineServiceType(settings: LLMSettings, userId?: string): Promise<string> {
-    // 检查当前设置是否为多提供商模式
-    if ((settings as any).isMultiProvider) {
-      return 'multi-provider';
-    }
-
-    // 如果提供了用户ID，读取用户级别的AI服务类型配置
-    if (userId) {
-      try {
-        const userServiceTypeSetting = await prisma.userSetting.findUnique({
-          where: {
-            userId_key: {
-              userId,
-              key: 'ai_service_type',
-            },
-          },
-        });
-
-        if (userServiceTypeSetting?.value === 'custom') {
-          return 'custom';
-        } else {
-          return 'official';
-        }
-      } catch (error) {
-        logger.error('获取用户AI服务类型失败:', error);
-      }
-    }
-
-    // 兼容旧版本：检查系统级别配置
-    const serviceTypeConfig = await prisma.systemConfig.findUnique({
-      where: { key: 'llm_service_type' },
-    });
-
-    if (serviceTypeConfig?.value === 'official') {
-      return 'official';
-    }
-
-    // 默认为自定义服务
+    // 强制使用自定义AI服务
     return 'custom';
   }
 
@@ -119,93 +84,9 @@ export class LLMProviderService {
     isChat: boolean = false,
     source?: 'App' | 'WeChat' | 'API',
   ): Promise<string | null> {
-    // 🚀 检查是否使用多提供商模式
-    if ((settings as any).isMultiProvider) {
-      logger.info(`使用多提供商服务处理${isChat ? '聊天' : '文本生成'}请求`);
-
-      const startTime = Date.now();
-      let result: any;
-      let isSuccess = false;
-      let errorMessage: string | null = null;
-      let responseContent = '';
-      let usedProvider = 'multi-provider';
-      let usedModel = 'multi-provider';
-
-      try {
-        if (isChat && messages) {
-          result = await this.multiProviderService.generateChat(messages, userId);
-        } else if (!isChat && prompt) {
-          result = await this.multiProviderService.generateText(prompt, userId);
-        } else {
-          throw new Error('多提供商请求参数不正确');
-        }
-
-        if (result.success) {
-          isSuccess = true;
-          responseContent = result.data || '';
-
-          // 尝试获取实际使用的提供商信息
-          if (result.providerId) {
-            const config = await this.multiProviderService.loadMultiProviderConfig();
-            const usedProviderInstance = config?.providers.find((p) => p.id === result.providerId);
-            if (usedProviderInstance) {
-              usedProvider = usedProviderInstance.provider;
-              usedModel = usedProviderInstance.model;
-            }
-          }
-
-          return responseContent;
-        } else {
-          isSuccess = false;
-          errorMessage = result.error || '多提供商服务调用失败';
-          throw new Error(errorMessage || '多提供商服务调用失败');
-        }
-      } catch (error) {
-        isSuccess = false;
-        errorMessage = error instanceof Error ? error.message : String(error);
-        throw error;
-      } finally {
-        // 📊 记录多提供商调用日志
-        const duration = Date.now() - startTime;
-
-        // 提取用户消息和系统提示
-        let userMessage = '';
-        let systemPrompt: string | null = null;
-
-        if (isChat && messages) {
-          systemPrompt = messages.find((m) => m.role === 'system')?.content || null;
-          userMessage = messages
-            .filter((m) => m.role === 'user')
-            .map((m) => m.content)
-            .join('\n');
-        } else if (prompt) {
-          userMessage = prompt;
-        }
-
-        // 估算token数量（多提供商暂时使用估算）
-        const promptTokens = this.estimateTokens(userMessage + (systemPrompt || ''));
-        const completionTokens = this.estimateTokens(responseContent);
-
-        await this.logLLMCall({
-          userId,
-          accountId,
-          provider: usedProvider,
-          model: usedModel,
-          userMessage,
-          assistantMessage: responseContent || null,
-          systemPrompt,
-          isSuccess,
-          errorMessage,
-          duration,
-          promptTokens,
-          completionTokens,
-          serviceType: 'multi-provider',
-          source: source || this.requestContext.source,
-        });
-      }
-    }
-
-    return null; // 不使用多提供商
+    // 🚀 禁用多提供商模式，始终返回null使用自定义AI
+    logger.info('多提供商模式已禁用，使用自定义AI');
+    return null;
   }
 
   /**
@@ -290,68 +171,8 @@ export class LLMProviderService {
         `🔍 [调试] getLLMSettings调用 - userId: ${userId}, accountId: ${accountId}, accountType: ${accountType}`,
       );
 
-      // 🔥 修改：读取用户级别的AI服务类型配置，而不是系统级别
-      const userServiceTypeSetting = await prisma.userSetting.findUnique({
-        where: {
-          userId_key: {
-            userId,
-            key: 'ai_service_type',
-          },
-        },
-      });
-
-      const serviceType = userServiceTypeSetting?.value || 'official';
-      logger.debug(
-        `🔍 [调试] 用户 ${userId} 的AI服务类型: ${serviceType} (数据库记录: ${JSON.stringify(
-          userServiceTypeSetting,
-        )})`,
-      );
-
-      // 🚀 如果用户选择了官方服务，直接使用官方服务配置
-      if (serviceType === 'official') {
-        logger.info('用户选择了官方AI服务，跳过自定义设置检查');
-
-        // 🚀 优先级1: 检查多提供商配置（官方AI服务）
-        const multiProviderConfig = await this.multiProviderService.loadMultiProviderConfig();
-        if (multiProviderConfig?.enabled && multiProviderConfig.providers.length > 0) {
-          const activeProviders = multiProviderConfig.providers.filter((p) => p.enabled);
-          if (activeProviders.length > 0) {
-            logger.info('✅ 使用多提供商LLM配置（官方AI服务）');
-            return {
-              provider: 'multi-provider',
-              model: 'multi-provider',
-              apiKey: '',
-              temperature: 0.7,
-              maxTokens: 1000,
-              isMultiProvider: true,
-              settingsSource: 'official',
-            } as LLMSettings & { isMultiProvider: boolean };
-          }
-        }
-
-        // 🚀 优先级2: 使用全局LLM配置（官方AI服务）
-        logger.info('使用全局LLM配置（官方AI服务）');
-        const globalConfig = await this.getFullGlobalLLMConfig();
-
-        if (globalConfig) {
-          logger.info(`✅ 使用全局LLM配置: ${globalConfig.provider}/${globalConfig.model}`);
-          return {
-            ...globalConfig,
-            settingsSource: 'official',
-          };
-        }
-
-        // 如果没有全局配置，使用默认设置
-        logger.info(`使用默认LLM设置`);
-        return {
-          ...this.defaultSettings,
-          apiKey: '',
-          settingsSource: 'official',
-        };
-      }
-
-      // 🚀 如果用户选择了自定义服务，则检查用户的自定义设置（仅限该用户创建的设置）
-      logger.info('用户选择了自定义AI服务，检查用户自己的自定义设置');
+      // 🔥 强制使用自定义AI服务，移除官方AI和多提供商模式
+      logger.info('强制使用自定义AI服务');
 
       // 如果提供了账本信息，优先使用账本绑定的UserLLMSetting（但必须属于该用户）
       if (accountId) {
@@ -412,31 +233,8 @@ export class LLMProviderService {
       logger.error('❌ 用户选择了自定义AI服务但未配置自定义LLM设置，拒绝回退到官方服务');
       throw new Error('用户选择了自定义AI服务但未配置，请先在"设置 → AI服务管理"中添加自定义AI服务配置');
     } catch (error) {
-      // 只处理非业务错误，业务错误（如自定义AI未配置）应该向上传播
-      if (error instanceof Error && error.message.includes('自定义AI服务但未配置')) {
-        throw error;
-      }
       logger.error('获取LLM设置错误:', error);
-
-      // 即使出错，也尝试使用全局配置
-      try {
-        const globalConfig = await this.getFullGlobalLLMConfig();
-        if (globalConfig) {
-          logger.info(`回退到全局LLM配置: ${globalConfig.provider}/${globalConfig.model}`);
-          return {
-            ...globalConfig,
-            settingsSource: 'official',
-          };
-        }
-      } catch (globalError) {
-        logger.error('获取全局LLM配置错误:', globalError);
-      }
-
-      return {
-        ...this.defaultSettings,
-        apiKey: '',
-        settingsSource: 'official',
-      };
+      throw error;
     }
   }
 

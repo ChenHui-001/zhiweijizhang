@@ -1964,119 +1964,52 @@ export class AIController {
         return res.status(403).json({ error: '无权访问该账本' });
       }
 
-      // 首先检查是否启用了全局AI服务
-      const globalConfig = await this.llmProviderService.getGlobalLLMConfig();
-      logger.info('⚙️ [AI服务] 全局配置:', { enabled: globalConfig.enabled });
+      // 🔥 强制使用自定义AI服务，跳过官方AI检查
 
-      if (globalConfig.enabled) {
-        // 检查用户的AI服务类型配置（从user_settings表读取）
-        const serviceType = await this.getUserAIServiceType(userId);
-        logger.info('🔍 [AI服务] 用户选择的服务类型:', serviceType);
-
-        if (serviceType === 'official') {
-          // 如果启用了官方服务，返回官方服务信息
-          // 获取TOKEN使用量信息
-          const tokenUsage = await this.getTokenUsageForUser(userId);
-
-          // 使用TokenLimitService获取真实的Token限额
-          const { TokenLimitService } = await import('../services/token-limit.service');
-          const tokenLimitService = new TokenLimitService();
-          const dailyTokenLimit = await tokenLimitService.getUserDailyTokenLimit(userId);
-
-          const result = {
-            enabled: true,
-            type: 'official',
-            maxTokens: globalConfig.maxTokens || 1000,
-            dailyTokenLimit: dailyTokenLimit,
-            usedTokens: tokenUsage.usedTokens || 0,
-            provider: globalConfig.provider,
-            model: globalConfig.model,
-            baseUrl: globalConfig.baseUrl,
-          };
-
-          logger.info('✅ [AI服务] 返回官方服务信息:', result);
-          return res.json(result);
-        } else if (serviceType === 'custom') {
-          // 如果是自定义服务类型，获取用户的默认自定义LLM设置
-          try {
-            const userLLMSetting = await this.getUserDefaultLLMSetting(userId);
-
-            if (!userLLMSetting) {
-              logger.info('❌ [AI服务] 用户没有默认的自定义LLM设置');
-              const result = {
-                enabled: false,
-                type: null,
-                maxTokens: 1000,
-              };
-              return res.json(result);
-            }
-
-            // 返回用户的自定义服务信息
-            const result = {
-              enabled: true,
-              type: 'custom',
-              maxTokens: userLLMSetting.maxTokens || 1000,
-              provider: userLLMSetting.provider,
-              model: userLLMSetting.model,
-              baseUrl: userLLMSetting.baseUrl,
-              name: userLLMSetting.name,
-              description: userLLMSetting.description,
-            };
-
-            logger.info('✅ [AI服务] 返回用户自定义服务信息:', result);
-            return res.json(result);
-          } catch (error) {
-            logger.error('❌ [AI服务] 获取用户自定义LLM设置失败:', error);
-            const result = {
-              enabled: false,
-              type: null,
-              maxTokens: 1000,
-            };
-            return res.json(result);
-          }
-        }
-        // 如果服务类型不是official或custom，继续下面的逻辑检查账本绑定（兼容旧版本）
-      }
-
-      // 如果没有启用全局服务，检查账本是否绑定了自定义服务
+      // 如果提供了账本信息，优先使用账本绑定的UserLLMSetting
       try {
         const accountBook = await prisma.accountBook.findUnique({
           where: { id: accountId },
+          include: { userLLMSetting: true },
         });
 
-        logger.info('📖 [AI服务] 账本信息:', {
-          found: !!accountBook,
-          userLLMSettingId: accountBook?.userLLMSettingId,
-        });
-
-        if (!accountBook || !accountBook.userLLMSettingId) {
-          const result = {
-            enabled: false,
-            type: null,
-            maxTokens: 1000,
-          };
-          logger.info('✅ [AI服务] 返回未启用状态:', result);
-          return res.json(result);
+        if (accountBook && accountBook.userLLMSetting) {
+          // 权限检查：确保LLM设置属于当前用户
+          if (accountBook.userLLMSetting.userId === userId) {
+            logger.info(`✅ 使用账本绑定的用户自定义LLM设置: ${accountBook.userLLMSetting.id}`);
+            const result = {
+              enabled: true,
+              type: 'custom',
+              maxTokens: accountBook.userLLMSetting.maxTokens || 1000,
+              provider: accountBook.userLLMSetting.provider,
+              model: accountBook.userLLMSetting.model,
+              baseUrl: accountBook.userLLMSetting.baseUrl,
+              name: accountBook.userLLMSetting.name,
+              description: accountBook.userLLMSetting.description,
+            };
+            logger.info('✅ [AI服务] 返回账本绑定的自定义服务信息:', result);
+            return res.json(result);
+          }
         }
+      } catch (error) {
+        logger.error('❌ [AI服务] 获取账本LLM设置失败:', error);
+      }
 
-        // 获取绑定的用户LLM设置
-        const userLLMSetting = await prisma.userLLMSetting.findUnique({
-          where: { id: accountBook.userLLMSettingId },
-        });
-
-        logger.info('🤖 [AI服务] LLM设置信息:', { found: !!userLLMSetting });
+      // 如果没有账本绑定，使用用户的默认LLM设置
+      try {
+        const userLLMSetting = await this.getUserDefaultLLMSetting(userId);
 
         if (!userLLMSetting) {
+          logger.info('❌ [AI服务] 用户没有默认的自定义LLM设置');
           const result = {
             enabled: false,
             type: null,
             maxTokens: 1000,
           };
-          logger.info('✅ [AI服务] LLM设置不存在，返回未启用状态:', result);
           return res.json(result);
         }
 
-        // 返回自定义服务信息
+        // 返回用户的自定义服务信息
         const result = {
           enabled: true,
           type: 'custom',
@@ -2088,10 +2021,10 @@ export class AIController {
           description: userLLMSetting.description,
         };
 
-        logger.info('✅ [AI服务] 返回自定义服务信息:', result);
+        logger.info('✅ [AI服务] 返回用户自定义服务信息:', result);
         return res.json(result);
       } catch (error) {
-        logger.error('❌ [AI服务] 获取账本AI服务配置错误:', error);
+        logger.error('❌ [AI服务] 获取用户自定义LLM设置失败:', error);
         const result = {
           enabled: false,
           type: null,
@@ -2100,8 +2033,8 @@ export class AIController {
         return res.json(result);
       }
     } catch (error) {
-      logger.error('❌ [AI服务] 获取账本激活AI服务错误:', error);
-      res.status(500).json({ error: '处理请求时出错' });
+      logger.error('获取AI服务信息失败:', error);
+      return res.status(500).json({ error: '获取AI服务信息失败' });
     }
   }
 
@@ -2265,28 +2198,10 @@ export class AIController {
    * 获取用户的AI服务类型选择
    * @param userId 用户ID
    * @returns AI服务类型 ('official' 或 'custom')
+   * @deprecated 强制使用自定义AI，此方法始终返回 'custom'
    */
   private async getUserAIServiceType(userId: string): Promise<'official' | 'custom'> {
-    try {
-      const userSetting = await prisma.userSetting.findUnique({
-        where: {
-          userId_key: {
-            userId: userId,
-            key: 'ai_service_type',
-          },
-        },
-      });
-
-      if (userSetting && userSetting.value === 'custom') {
-        return 'custom';
-      }
-
-      // 默认返回 'official'
-      return 'official';
-    } catch (error) {
-      logger.error(`获取用户 ${userId} 的AI服务类型失败:`, error);
-      return 'official';
-    }
+    return 'custom';
   }
 
   /**
