@@ -6,6 +6,7 @@ import path from 'path';
 import config from './config/config';
 import routes from './routes';
 import { trackApiCall } from './middleware/access-tracking.middleware';
+import { logger } from './utils/logger';
 
 // 创建Express应用
 const app: Express = express();
@@ -102,7 +103,7 @@ app.use((req: Request, res: Response) => {
 
 // 错误处理中间件
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error(err.stack);
+  logger.error('Unhandled error:', err);
   res.status(500).json({
     message: '服务器内部错误',
     error: config.env === 'development' ? err.message : undefined,
