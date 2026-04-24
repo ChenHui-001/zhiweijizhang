@@ -1,0 +1,388 @@
+/* 记账添加页面特有样式 */
+
+.transaction-add-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* 减少从20px到12px */
+}
+
+/* 类型选择器 */
+.transaction-type-toggle {
+  display: flex;
+  background-color: var(--background-color);
+  border-radius: 8px;
+  padding: 3px; /* 减少从4px到3px */
+}
+
+.transaction-type-toggle .type-button {
+  flex: 1;
+  padding: 10px; /* 减少从12px到10px */
+  text-align: center;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.transaction-type-toggle .type-button.active {
+  background-color: var(--primary-color);
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.transaction-type-toggle .type-button.expense.active {
+  background-color: #ef4444;
+}
+
+.transaction-type-toggle .type-button.income.active {
+  background-color: #10b981;
+}
+
+/* 金额输入 */
+.amount-input-container {
+  text-align: center;
+  padding: 12px 0; /* 减少从20px到12px */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.amount-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px; /* 减少从8px到6px */
+  font-size: 40px; /* 减少从48px到40px */
+  font-weight: 300;
+  color: var(--text-primary);
+  justify-content: center;
+}
+
+.currency-symbol {
+  font-size: 30px; /* 减少从36px到30px */
+  color: var(--text-secondary);
+  font-weight: 300;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.amount-input {
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 40px; /* 减少从48px到40px */
+  font-weight: 300;
+  color: var(--text-primary);
+  text-align: center;
+  line-height: 1;
+  width: auto;
+  min-width: 50px; /* 减少从60px到50px */
+  max-width: 180px; /* 减少从200px到180px */
+}
+
+.amount-input::placeholder {
+  color: var(--text-secondary);
+}
+
+/* 响应式调整 */
+@media (max-width: 480px) {
+  .amount-display {
+    font-size: 36px; /* 减少从40px到36px */
+    gap: 5px; /* 减少从6px到5px */
+  }
+
+  .currency-symbol {
+    font-size: 26px; /* 减少从30px到26px */
+  }
+
+  .amount-input {
+    font-size: 36px; /* 减少从40px到36px */
+    min-width: 45px; /* 减少从50px到45px */
+    max-width: 140px; /* 减少从150px到140px */
+  }
+}
+
+/* 步骤指示器 */
+.step-indicator {
+  display: flex;
+  margin-bottom: 12px; /* 减少从20px到12px */
+  background-color: var(--card-background);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.step-item {
+  flex: 1;
+  padding: 8px 6px; /* 减少从12px 8px到8px 6px */
+  text-align: center;
+  font-size: 13px; /* 减少从14px到13px */
+  color: var(--text-secondary);
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.step-item.active {
+  color: var(--primary-color);
+  font-weight: 500;
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.step-number {
+  display: none; /* 隐藏数字，使用文字显示 */
+}
+
+.step-text {
+  font-size: 13px; /* 减少从14px到13px */
+  color: inherit;
+  font-weight: inherit;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* 步骤内容 */
+.step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* 减少从20px到12px */
+}
+
+.step-title {
+  font-size: 17px; /* 减少从18px到17px */
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 10px; /* 减少从16px到10px */
+}
+
+/* 分类选择 */
+.category-section {
+  margin-bottom: 12px; /* 减少从20px到12px */
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px; /* 减少从16px到12px */
+}
+
+.category-grid .category-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px; /* 减少从8px到6px */
+  cursor: pointer;
+  transition: transform 0.2s;
+  padding: 8px 6px; /* 减少从12px 8px到8px 6px */
+  border-radius: 10px; /* 减少从12px到10px */
+}
+
+.category-grid .category-item:active {
+  transform: scale(0.95);
+}
+
+.category-grid .category-item.active .category-icon-wrapper {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.category-icon-wrapper {
+  width: 48px; /* 减少从56px到48px */
+  height: 48px; /* 减少从56px到48px */
+  border-radius: 50%;
+  background-color: rgba(59, 130, 246, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-color);
+  font-size: 18px; /* 减少从20px到18px */
+}
+
+.category-grid .category-name {
+  font-size: 11px; /* 减少从12px到11px */
+  text-align: center;
+  color: var(--text-primary);
+  line-height: 1.2;
+  max-width: 55px; /* 减少从60px到55px */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 选中的分类显示 */
+.selected-category {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* 减少从12px到10px */
+  padding: 12px; /* 减少从16px到12px */
+  background-color: var(--card-background);
+  border-radius: 10px; /* 减少从12px到10px */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.selected-category .category-icon-wrapper {
+  width: 42px; /* 减少从48px到42px */
+  height: 42px; /* 减少从48px到42px */
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.selected-category .category-icon-wrapper i {
+  font-size: 16px; /* 减少从18px到16px */
+}
+
+.selected-category span {
+  flex: 1;
+  font-size: 15px; /* 减少从16px到15px */
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.change-category-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 6px 12px; /* 减少从8px 16px到6px 12px */
+  border-radius: 6px;
+  font-size: 13px; /* 减少从14px到13px */
+  cursor: pointer;
+}
+
+.change-category-btn:hover {
+  background-color: var(--background-color);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+/* 记账详情表单 */
+.transaction-details-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* 减少从20px到12px */
+}
+
+.transaction-details-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px; /* 减少从8px到6px */
+}
+
+.transaction-details-form .form-label {
+  font-size: 13px; /* 减少从14px到13px */
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.transaction-details-form .form-input {
+  background-color: var(--card-background);
+  border-radius: 8px;
+  padding: 10px; /* 减少从12px到10px */
+  border: 1px solid var(--border-color);
+}
+
+.transaction-details-form .form-input input,
+.transaction-details-form .form-input textarea {
+  width: 100%;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 15px; /* 减少从16px到15px */
+  color: var(--text-primary);
+  resize: none;
+}
+
+.transaction-details-form .form-input input:focus,
+.transaction-details-form .form-input textarea:focus {
+  outline: none;
+}
+
+.transaction-details-form .form-input input::placeholder,
+.transaction-details-form .form-input textarea::placeholder {
+  color: var(--text-secondary);
+}
+
+.transaction-details-form .form-input textarea {
+  min-height: 70px; /* 减少从80px到70px */
+  font-family: inherit;
+}
+
+/* 表单输入样式 */
+.transaction-details-form .form-input input[type="date"],
+.transaction-details-form .form-input input[type="time"] {
+  width: 100%;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  color: var(--text-primary);
+  padding: 0;
+}
+
+.transaction-details-form .form-input input[type="date"]:focus,
+.transaction-details-form .form-input input[type="time"]:focus {
+  outline: none;
+}
+
+.transaction-details-form .form-input input[type="date"]::-webkit-calendar-picker-indicator,
+.transaction-details-form .form-input input[type="time"]::-webkit-calendar-picker-indicator {
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+/* 日期和时间输入的特殊样式 */
+.transaction-details-form .form-input input[type="date"]::-webkit-datetime-edit,
+.transaction-details-form .form-input input[type="time"]::-webkit-datetime-edit {
+  color: var(--text-primary);
+}
+
+.transaction-details-form .form-input input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.transaction-details-form .form-input input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+  color: var(--text-primary);
+}
+
+.transaction-details-form .form-input input[type="date"]::-webkit-datetime-edit-text,
+.transaction-details-form .form-input input[type="time"]::-webkit-datetime-edit-text {
+  color: var(--text-secondary);
+}
+
+/* 表单操作按钮 */
+.form-actions {
+  margin-top: 16px; /* 减少从20px到16px */
+}
+
+.save-button {
+  width: 100%;
+  padding: 14px; /* 减少从16px到14px */
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 10px; /* 减少从12px到10px */
+  font-size: 15px; /* 减少从16px到15px */
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.save-button:hover:not(:disabled) {
+  background-color: var(--primary-color-dark, #2563eb);
+}
+
+.save-button:disabled {
+  background-color: var(--border-color);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}
+
+/* 响应式设计 */
+@media (max-width: 360px) {
+  .category-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 480px) {
+  .category-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+} 

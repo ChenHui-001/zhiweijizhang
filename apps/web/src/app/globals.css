@@ -1,0 +1,629 @@
+/* 导入FontAwesome图标库 - 在Tailwind之前加载 */
+@import '@fortawesome/fontawesome-free/css/all.min.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 移动端标签组件动画和样式 */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+
+/* 背景模糊效果增强 */
+.backdrop-blur-sm {
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+
+.backdrop-blur-md {
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+.backdrop-blur-lg {
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* 标签选择器背景遮罩 */
+.tag-selector-backdrop {
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 9999 !important;
+  /* 确保支持backdrop-filter的浏览器 */
+  will-change: backdrop-filter !important;
+  /* 确保覆盖所有内容 */
+  pointer-events: auto !important;
+}
+
+/* 如果不支持backdrop-filter，使用更深的背景色 */
+@supports not (backdrop-filter: blur(1px)) {
+  .tag-selector-backdrop {
+    background: rgba(0, 0, 0, 0.7) !important;
+  }
+}
+
+/* 标签选择器容器 */
+.tag-selector-container {
+  z-index: 9999 !important;
+  position: fixed !important;
+}
+
+/* 从底部滑出动画 */
+@keyframes slideUpFromBottom {
+  from {
+    transform: translateX(-50%) translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 滑出关闭动画 */
+@keyframes slideDownToBottom {
+  from {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-50%) translateY(100%);
+    opacity: 0;
+  }
+}
+
+/* 居中模态框淡入动画 */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 居中模态框淡出动画 */
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* 自定义阴影 */
+.shadow-modal {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25),
+              0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* 渐变边框效果 */
+.border-gradient {
+  background: linear-gradient(white, white) padding-box,
+              linear-gradient(135deg, #3b82f6, #8b5cf6) border-box;
+  border: 2px solid transparent;
+}
+
+/* 移动端触摸优化 */
+@media (hover: none) and (pointer: coarse) {
+  .hover\:bg-gray-50:hover {
+    background-color: rgb(249 250 251);
+  }
+
+  .hover\:shadow-md:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+}
+
+/* 移动端防缩放样式 */
+@media (hover: none) and (pointer: coarse) {
+  /* 禁用双指缩放和双击缩放 */
+  html, body {
+    touch-action: manipulation !important;
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    user-select: none !important;
+  }
+
+  /* 允许输入框和文本区域的文本选择 */
+  input, textarea, [contenteditable] {
+    -webkit-user-select: text !important;
+    user-select: text !important;
+    touch-action: manipulation !important;
+  }
+
+  /* 允许滚动容器的滚动操作 */
+  .scroll-container, .overflow-auto, .overflow-y-auto, .overflow-x-auto {
+    touch-action: pan-x pan-y !important;
+  }
+}
+
+/* 自定义缩放效果 */
+.active\:scale-98:active {
+  transform: scale(0.98);
+}
+
+.active\:scale-95:active {
+  transform: scale(0.95);
+}
+
+.hover\:scale-105:hover {
+  transform: scale(1.05);
+}
+
+/* 边框宽度 */
+.border-3 {
+  border-width: 3px;
+}
+
+/* 隐藏滚动条 */
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* 标签贴纸样式增强 */
+.tag-sticker {
+  position: relative;
+  overflow: hidden;
+}
+
+.tag-sticker::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 100%);
+  pointer-events: none;
+}
+
+/* 最小高度工具类 */
+.min-h-\[40px\] {
+  min-height: 40px;
+}
+
+.min-h-\[44px\] {
+  min-height: 44px;
+}
+
+/* 视口高度工具类 */
+.min-h-\[40vh\] {
+  min-height: 40vh;
+}
+
+.max-h-\[80vh\] {
+  max-height: 80vh;
+}
+
+/* 确保FontAwesome图标正确显示 - 覆盖Tailwind的重置样式 */
+.fas, .far, .fab, .fal, .fad {
+  font-family: "Font Awesome 6 Free", "Font Awesome 6 Pro", "Font Awesome 6 Brands" !important;
+  font-weight: 900 !important;
+  font-style: normal !important;
+  font-variant: normal !important;
+  text-transform: none !important;
+  line-height: 1 !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  display: inline-block !important;
+}
+
+/* 修复可能的图标显示问题 */
+i.fas, i.far, i.fab, i.fal, i.fad {
+  font-family: "Font Awesome 6 Free" !important;
+  font-weight: 900 !important;
+  font-style: normal !important;
+}
+
+/* 导入必要的样式 */
+@import url('../styles/themes.css');
+@import url('../styles/bottom-nav-fix.css');
+@import url('../styles/global-styles.css');
+@import url('../styles/auth.css');
+@import url('../styles/theme-switcher.css');
+@import url('../styles/dashboard.css');
+@import url('../styles/budget-form.css');
+@import url('../styles/animations.css');
+@import url('../styles/ios-fixes.css');
+@import url('../styles/ios-safe-area.css');
+@import url('../styles/portal-dropdown.css');
+@import url('../styles/display-settings.css');
+@import url('../styles/compact-layout.css');
+@import url('../styles/toast-fix.css');
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --primary-hover: 221.2 83.2% 45%;
+    --primary-active: 221.2 83.2% 40%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --radius: 0.5rem;
+    --error: 0 84.2% 60.2%;
+    --background-secondary: 240 5% 96%;
+    --background-hover: 240 5% 92%;
+
+    /* 预算列表页所需的变量 */
+    --background-color: #f9fafb;
+    --card-background: #ffffff;
+    --card-bg: #ffffff;
+    --border-color: #e5e7eb;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --text-color: #1f2937;
+    --text-color-secondary: #6b7280;
+    --primary-color: #3b82f6;
+    --primary-foreground: #ffffff;
+    --primary-rgb: 59, 130, 246;
+    --success-color: #22C55E;
+    --success-background: rgba(34, 197, 94, 0.1);
+    --warning-color: #F59E0B;
+    --warning-background: rgba(245, 158, 11, 0.1);
+    --error-color: #EF4444;
+    --error-background: rgba(239, 68, 68, 0.1);
+    --danger-color: #EF4444;
+    --border-radius: 0.5rem;
+    --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    --hover-background: rgba(0, 0, 0, 0.05);
+    --primary-color-light: rgba(59, 130, 246, 0.1);
+    --primary-color-dark: #2563eb;
+    --error-color-dark: #dc2626;
+    --accent-color: #8b5cf6;
+    --skeleton-background: #f3f4f6;
+    --skeleton-highlight: #e5e7eb;
+    --card-background-secondary: #f9fafb;
+    --category-icon-background: #f0f0f0;
+    --category-icon-color: #333;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 210 40% 98%;
+    --primary-hover: 221.2 83.2% 53.3%;
+    --primary-active: 224.3 76.3% 48%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    --error: 0 62.8% 30.6%;
+    --background-secondary: 240 3.7% 10%;
+    --background-hover: 240 3.7% 15%;
+
+    /* 自定义暗色主题变量 */
+    --primary-color: #60a5fa; /* 暗色蓝色主题 */
+    --primary-foreground: #ffffff;
+    --primary-rgb: 96, 165, 250;
+    --text-primary: #f3f4f6;
+    --text-secondary: #9ca3af;
+    --text-color: #f3f4f6;
+    --text-color-secondary: #9ca3af;
+    --border-color: #374151;
+    --card-background: #1f2937;
+    --card-bg: #1f2937;
+    --background-color: #111827;
+    --success-color: #34d399;
+    --success-background: rgba(52, 211, 153, 0.1);
+    --success-background-dark: rgba(52, 211, 153, 0.2);
+    --error-color: #f87171;
+    --error-background: rgba(248, 113, 113, 0.1);
+    --danger-color: #f87171;
+    --warning-color: #fbbf24;
+    --warning-background: rgba(251, 191, 36, 0.1);
+    --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --hover-background: rgba(255, 255, 255, 0.1);
+    --primary-color-light: rgba(96, 165, 250, 0.2);
+    --primary-color-dark: #3b82f6;
+    --error-color-dark: #ef4444;
+    --accent-color: #a855f7;
+    --skeleton-background: #374151;
+    --skeleton-highlight: #4b5563;
+    --card-background-secondary: #111827;
+    --category-icon-background: #374151;
+    --category-icon-color: #f3f4f6;
+    color-scheme: dark;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+  }
+}
+
+/* 家庭列表页面样式 */
+.family-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 0 4px;
+}
+
+.family-list-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.family-action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap; /* 确保按钮不换行 */
+}
+
+.family-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  white-space: nowrap; /* 防止文字换行 */
+  min-width: fit-content;
+}
+
+.family-action-btn i {
+  font-size: 12px;
+}
+
+.family-action-btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.family-action-btn-primary:hover {
+  background-color: var(--primary-color-dark, #2563eb);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+.family-action-btn-secondary {
+  background-color: var(--card-background);
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.family-action-btn-secondary:hover {
+  background-color: var(--primary-color);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+}
+
+/* 家庭卡片样式 */
+.family-card {
+  background-color: var(--card-background);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid var(--border-color);
+  margin-bottom: 16px;
+}
+
+.family-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-color: var(--primary-color);
+}
+
+.family-card-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-color) 0%, #6366f1 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-right: 16px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+}
+
+.family-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.family-card-header {
+  margin-bottom: 8px;
+}
+
+.family-card-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.family-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.family-card-date {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.family-card-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.family-card-members {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.family-card-members i {
+  font-size: 12px;
+  color: var(--primary-color);
+}
+
+.family-card-role {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.family-card-arrow {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-left: 12px;
+  transition: transform 0.2s ease;
+}
+
+.family-card:hover .family-card-arrow {
+  transform: translateX(4px);
+  color: var(--primary-color);
+}
+
+/* 响应式调整 */
+@media (max-width: 480px) {
+  .family-action-buttons {
+    gap: 6px;
+  }
+
+  .family-action-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .family-action-btn span {
+    display: none; /* 在小屏幕上隐藏文字，只显示图标 */
+  }
+
+  .family-action-btn i {
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .family-card {
+    padding: 16px;
+  }
+
+  .family-card-avatar {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+
+  .family-card-name {
+    font-size: 16px;
+  }
+}

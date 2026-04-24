@@ -1,0 +1,520 @@
+/* AI服务管理页面样式 */
+
+/* 登录容器 */
+.loginContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f5f7fa;
+}
+
+.loginCard {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 32px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.loginCard h2 {
+  font-size: 24px;
+  margin-bottom: 16px;
+  color: #1f2937;
+}
+
+.loginCard p {
+  font-size: 16px;
+  color: #6b7280;
+  margin-bottom: 24px;
+}
+
+.loginButton {
+  padding: 12px 24px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.loginButton:hover {
+  background-color: #2563eb;
+}
+
+.loginInfo {
+  background-color: #f3f4f6;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: left;
+}
+
+.loginInfo p {
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+/* 操作按钮 */
+.actionButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.iconButton {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: transparent;
+  color: var(--text-primary, rgb(31, 41, 55));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: background-color 0.2s, transform 0.2s;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.iconButton:hover {
+  background-color: var(--muted, rgba(0, 0, 0, 0.05));
+}
+
+.refreshButton:active {
+  transform: rotate(180deg);
+}
+
+/* 加载状态 */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  color: var(--text-secondary, rgb(107, 114, 128));
+}
+
+.loadingSpinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: var(--primary-color, rgb(59, 130, 246));
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 全局AI配置样式 */
+.globalAIConfig {
+  background-color: var(--card-background, white);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.aiToggleSection {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.aiToggleHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.aiToggleInfo h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, rgb(31, 41, 55));
+  margin: 0 0 4px 0;
+}
+
+.aiToggleInfo p {
+  font-size: 14px;
+  color: var(--text-secondary, rgb(107, 114, 128));
+  margin: 0;
+}
+
+/* 全局AI服务总开关样式 */
+.globalAISwitch {
+  background-color: var(--card-background, white);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 16px;
+  padding: 20px 24px;
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.globalAISwitchHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.globalAISwitchInfo h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, rgb(31, 41, 55));
+  margin: 0 0 4px 0;
+}
+
+.globalAISwitchInfo p {
+  font-size: 14px;
+  color: var(--text-secondary, rgb(107, 114, 128));
+  margin: 0;
+}
+
+.globalAISwitchControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.globalAISwitchToggle {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 30px;
+}
+
+.globalAISwitchToggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.globalAISwitchSlider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.3s;
+  border-radius: 30px;
+}
+
+.globalAISwitchSlider::before {
+  position: absolute;
+  content: '';
+  height: 22px;
+  width: 22px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.3s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.globalAISwitchToggle input:checked + .globalAISwitchSlider {
+  background-color: var(--primary-color, rgb(59, 130, 246));
+}
+
+.globalAISwitchToggle input:checked + .globalAISwitchSlider::before {
+  transform: translateX(22px);
+}
+
+.globalAISwitchStatus {
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 40px;
+  text-align: center;
+}
+
+.globalAISwitchStatus.enabled {
+  color: rgb(34, 197, 94);
+}
+
+.globalAISwitchStatus.disabled {
+  color: rgb(107, 114, 128);
+}
+
+.globalAISwitchSpinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: var(--primary-color, rgb(59, 130, 246));
+  animation: spin 1s linear infinite;
+}
+
+/* 开关样式 */
+.toggleSwitch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 28px;
+}
+
+.toggleSwitch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleSlider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  border-radius: 28px;
+  transition: 0.3s;
+}
+
+.toggleSlider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+.toggleSwitch input:checked + .toggleSlider {
+  background-color: var(--primary-color, rgb(59, 130, 246));
+}
+
+.toggleSwitch input:checked + .toggleSlider:before {
+  transform: translateX(20px);
+}
+
+/* 服务类型选择 */
+.serviceTypeSection {
+  padding: 16px;
+}
+
+.serviceTypeTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, rgb(31, 41, 55));
+  margin: 0 0 12px 0;
+}
+
+.serviceTypeButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.serviceTypeButton {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  background-color: transparent;
+  color: var(--text-primary, rgb(31, 41, 55));
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.serviceTypeButton.active {
+  border-color: var(--primary-color, rgb(59, 130, 246));
+  background-color: rgba(59, 130, 246, 0.05);
+  color: var(--primary-color, rgb(59, 130, 246));
+}
+
+.serviceTypeButton i {
+  margin-right: 8px;
+}
+
+/* 空状态 */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  background-color: var(--card-background, white);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin: 16px 0;
+}
+
+.emptyIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: var(--muted, rgb(243, 244, 246));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: var(--primary-color, rgb(59, 130, 246));
+  font-size: 24px;
+}
+
+.emptyState h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, rgb(31, 41, 55));
+  margin-bottom: 8px;
+}
+
+.emptyState p, .errorState p {
+  font-size: 14px;
+  color: var(--text-secondary, rgb(107, 114, 128));
+  margin-bottom: 24px;
+}
+
+.addServiceButton, .retryButton {
+  padding: 10px 20px;
+  background-color: var(--primary-color, rgb(59, 130, 246));
+  color: white;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.addServiceButton:hover, .retryButton:hover {
+  background-color: var(--primary-hover, rgb(37, 99, 235));
+}
+
+/* 错误状态 */
+.errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  text-align: center;
+}
+
+.errorIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: rgb(239, 68, 68);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+/* AI服务列表 */
+.aiServicesList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.aiServiceItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background-color: var(--card-background, white);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.serviceInfo {
+  flex: 1;
+}
+
+.serviceName {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, rgb(31, 41, 55));
+  margin-bottom: 4px;
+}
+
+.serviceDetails {
+  display: flex;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-secondary, rgb(107, 114, 128));
+  margin-bottom: 4px;
+}
+
+.serviceProvider {
+  padding: 2px 8px;
+  background-color: var(--muted, rgb(243, 244, 246));
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.serviceModel {
+  padding: 2px 8px;
+  background-color: var(--muted, rgb(243, 244, 246));
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.serviceDescription {
+  font-size: 14px;
+  color: var(--text-secondary, rgb(107, 114, 128));
+  margin-top: 4px;
+}
+
+.serviceActions {
+  display: flex;
+  gap: 8px;
+}
+
+.editButton,
+.deleteButton {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  text-decoration: none;
+}
+
+.editButton {
+  color: var(--primary-color, rgb(59, 130, 246));
+}
+
+.editButton:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.deleteButton {
+  color: var(--error-color, rgb(239, 68, 68));
+}
+
+.deleteButton:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+} 

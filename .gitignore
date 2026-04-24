@@ -1,0 +1,190 @@
+# Dependency directories
+node_modules/
+
+# Build output
+dist/
+build/
+bak/
+.backup/
+# Next.js
+apps/web/.next/
+apps/web/out/
+next-env.d.ts
+client/
+test-reports
+data/
+scripts/db_backup/backups/
+scripts/database/db_backup/backups
+server/migrations/upgrade-simulation-report.json
+server/backups
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database backup tool configuration
+scripts/database/db_backup/config.env
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 例外：允许管理员 LLM 日志页面目录
+!apps/web/src/app/admin/llm/logs
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Backup files
+*.backup
+*.bak
+
+# iOS specific
+apps/ios/App/Podfile.lock
+apps/ios/App/Pods/
+
+# Testing
+coverage/
+
+# Prisma
+prisma/.env
+prisma/migrations/*_init/migration.sql
+
+# Misc
+.cache/
+.temp/
+tmp/
+temp/
+
+# Test and debug files
+test-*.js
+test-*.ts
+test-*.tsx
+test-*.md
+debug-*.js
+debug-*.ts
+fix-*.js
+fix-*.ts
+fix-*.sh
+
+# 例外：允许前端调试工具
+!apps/web/src/utils/debug-auth.ts
+create-test-*
+cleanup-*
+analyze-*
+check-*
+trigger-*
+verify-*
+cookies.txt
+
+# ===== Android/React Native =====
+
+# Android Studio
+apps/android/.gradle/
+apps/android/local.properties
+apps/android/.idea/
+apps/android/captures/
+apps/android/app/release/
+apps/android/app/debug/
+apps/android/*.iml
+apps/android/.externalNativeBuild/
+apps/android/.cxx/
+
+# Android Build
+apps/android/build/
+apps/android/app/build/
+apps/android/*/build/
+apps/android/gradlew
+apps/android/gradlew.bat
+apps/android/gradle/wrapper/gradle-wrapper.jar
+
+# Android Keystore
+apps/android/app/debug.keystore
+apps/android/app/release.keystore
+apps/android/*.keystore
+apps/android/keystore.properties
+
+# React Native
+apps/android/node_modules/
+apps/android/npm-debug.log*
+apps/android/yarn-debug.log*
+apps/android/yarn-error.log*
+
+# Metro
+apps/android/.metro-health-check*
+apps/android/metro.config.js.bak
+
+# React Native specific
+apps/android/android/app/build/
+apps/android/ios/build/
+apps/android/ios/Pods/
+apps/android/ios/*.xcworkspace/xcuserdata/
+
+# Flipper
+apps/android/ios/Pods/Flipper*
+apps/android/android/app/src/debug/java/com/*/ReactNativeFlipper.java
+
+# Bundle artifacts
+apps/android/*.jsbundle
+
+# CocoaPods (for future iOS)
+apps/android/ios/Pods/
+apps/android/ios/Podfile.lock
+
+# Fastlane
+apps/android/fastlane/report.xml
+apps/android/fastlane/Preview.html
+apps/android/fastlane/screenshots/
+apps/android/fastlane/test_output/
+
+# Generated files
+apps/android/android/app/src/main/assets/index.android.bundle
+apps/android/android/app/src/main/assets/index.android.bundle.meta
+apps/android/android/app/src/main/res/drawable-*/
+apps/android/android/app/src/main/res/raw/
+
+# APK files
+apps/android/app/build/outputs/apk/
+apps/android/app/build/outputs/bundle/
+*.apk
+*.aab
+
+# Android generated files
+apps/android/app/src/main/assets/fonts/
+apps/android/app/src/main/res/values/generated.xml
+
+# React Native Metro bundle
+apps/android/index.android.bundle
+apps/android/index.android.bundle.map
+
+# Temporary files
+apps/android/init.gradle
+apps/android/*.tmp
+apps/android/*.temp
+
+# Test and development files that shouldn't be tracked
+apps/android/src/screens/StorageTestScreen.tsx
+
+
+!docs/wechat_integration/test-wechat-development-guide.md
+
+# User documentation (independent project)
+user-docs/

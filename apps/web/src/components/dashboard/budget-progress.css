@@ -1,0 +1,302 @@
+/* 预算执行情况组件独立样式 */
+
+.dashboard-budget-section {
+  background-color: var(--card-background, #ffffff);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 16px;
+  margin-bottom: 8px; /* 与主样式保持一致 */
+}
+
+.dashboard-budget-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px; /* 与主样式保持一致 */
+  width: 100%; /* 确保标题栏占满宽度 */
+}
+
+.dashboard-budget-section .section-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #1f2937);
+  margin: 0;
+  text-align: left; /* 明确左对齐 */
+  flex: 1; /* 让标题占据剩余空间 */
+}
+
+.dashboard-budget-section .view-all {
+  font-size: 14px;
+  color: var(--primary-color, #3b82f6);
+  text-decoration: none;
+  text-align: right; /* 明确右对齐 */
+  white-space: nowrap; /* 防止换行 */
+  margin-left: auto; /* 确保在右侧 */
+}
+
+.dashboard-budget-section .budget-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* 与主样式保持一致 */
+}
+
+.dashboard-budget-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px; /* 与主样式保持一致 */
+  padding: 0; /* 移除内边距，避免与外层容器冲突 */
+  background: transparent !important; /* 强制透明背景，避免被其他页面样式影响 */
+  border: none !important; /* 强制移除边框 */
+  box-shadow: none !important; /* 强制移除阴影 */
+}
+
+.dashboard-budget-card .budget-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background: transparent !important; /* 强制移除渐变背景，避免被transactions页面样式影响 */
+  background-image: none !important; /* 强制移除背景图片 */
+  border: none !important; /* 强制移除边框 */
+  padding: 0 !important; /* 强制移除内边距 */
+}
+
+.dashboard-budget-category {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0; /* 允许收缩 */
+}
+
+.dashboard-category-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--primary-color-light, rgba(59, 130, 246, 0.1));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-color, #3b82f6);
+  flex-shrink: 0; /* 不允许收缩 */
+  overflow: hidden; /* 确保头像不会溢出 */
+}
+
+/* 当显示头像时，移除背景色 */
+.dashboard-category-icon:has(> div) {
+  background-color: transparent;
+}
+
+/* 确保头像组件正确适配图标容器 */
+.dashboard-category-icon > div {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 50%;
+}
+
+.dashboard-category-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary, #1f2937);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 预算金额容器 - 独立样式，避免冲突 */
+.dashboard-budget-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* 改为右对齐 */
+  gap: 1px; /* 减少间距从2px到1px */
+  flex-shrink: 0; /* 不允许收缩 */
+  min-width: 120px; /* 增加最小宽度以容纳更长的数字 */
+  max-width: 150px; /* 设置最大宽度避免过度拉伸 */
+  text-align: right; /* 明确设置右对齐 */
+}
+
+.dashboard-budget-amount .percentage-display {
+  font-size: 18px !important; /* 增大字体 */
+  font-weight: 600 !important;
+  line-height: 1.2;
+  margin: 0;
+  white-space: nowrap;
+  text-align: right; /* 右对齐 */
+  width: 100%; /* 占满容器宽度 */
+}
+
+.dashboard-budget-amount .amount-display {
+  font-size: 13px !important; /* 稍微增大字体 */
+  color: var(--text-secondary, #6b7280) !important;
+  line-height: 1.2;
+  margin: 0;
+  white-space: nowrap;
+  overflow: visible; /* 确保内容可见 */
+  text-overflow: clip; /* 不使用省略号 */
+  display: flex;
+  align-items: center;
+  justify-content: flex-end; /* 右对齐 */
+  gap: 2px;
+  text-align: right; /* 右对齐 */
+  width: 100%; /* 占满容器宽度 */
+}
+
+.dashboard-budget-amount .amount-display .current {
+  font-weight: 500;
+  color: var(--text-primary, #1f2937);
+}
+
+.dashboard-budget-amount .amount-display .separator {
+  color: var(--text-secondary, #6b7280);
+  margin: 0 2px; /* 添加左右间距 */
+}
+
+.dashboard-budget-amount .amount-display .total {
+  color: var(--text-secondary, #6b7280);
+}
+
+/* 进度条样式 - 独立命名避免冲突 */
+.dashboard-progress-bar-custom {
+  height: 8px;
+  background-color: var(--progress-bg, #e5e7eb);
+  border-radius: 4px;
+  overflow: hidden;
+  width: 100%;
+  position: relative;
+  border: 1px solid var(--progress-border, #d1d5db);
+}
+
+.dashboard-progress-custom {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* 夜间模式适配 */
+@media (prefers-color-scheme: dark) {
+  .dashboard-progress-bar-custom {
+    background-color: #374151; /* 夜间模式下的深灰色背景 */
+    border-color: #4b5563; /* 夜间模式下的边框颜色 */
+  }
+}
+
+/* 强制夜间模式类适配 */
+.dark .dashboard-progress-bar-custom,
+[data-theme="dark"] .dashboard-progress-bar-custom {
+  background-color: #374151 !important;
+  border-color: #4b5563 !important;
+}
+
+/* 响应式调整 */
+@media (max-width: 480px) {
+  .dashboard-budget-section {
+    padding: 12px;
+  }
+  
+  .dashboard-category-icon {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .dashboard-category-name {
+    font-size: 13px;
+  }
+  
+  .dashboard-budget-amount {
+    min-width: 100px; /* 移动端也增加最小宽度 */
+    max-width: 130px; /* 移动端适当减小最大宽度 */
+  }
+
+  .dashboard-budget-amount .percentage-display {
+    font-size: 16px !important; /* 移动端稍微减小但仍保持可读性 */
+  }
+
+  .dashboard-budget-amount .amount-display {
+    font-size: 12px !important; /* 移动端稍微增大字体 */
+  }
+}
+
+/* 大屏设备样式调整 */
+@media (min-width: 640px) {
+  .dashboard-budget-section {
+    margin-bottom: 12px; /* 大屏设备稍微增加间距 */
+  }
+  
+  .dashboard-budget-section .section-header {
+    margin-bottom: 16px; /* 大屏设备恢复标准间距 */
+  }
+  
+  .dashboard-budget-section .budget-content {
+    gap: 10px; /* 大屏设备稍微增加间距 */
+  }
+  
+  .dashboard-budget-card {
+    gap: 8px; /* 大屏设备稍微增加间距 */
+  }
+  
+  .dashboard-budget-amount {
+    gap: 2px; /* 大屏设备恢复标准间距 */
+    min-width: 140px; /* 大屏设备增加最小宽度 */
+    max-width: 180px; /* 大屏设备增加最大宽度 */
+  }
+
+  .dashboard-budget-amount .percentage-display {
+    font-size: 20px !important; /* 大屏设备进一步增大字体 */
+  }
+
+  .dashboard-budget-amount .amount-display {
+    font-size: 14px !important; /* 大屏设备增大字体 */
+  }
+}
+
+/* 确保在任何情况下都不会被其他样式覆盖 */
+.dashboard-budget-section .section-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+
+.dashboard-budget-section .section-header .flex {
+  display: flex !important;
+  align-items: center !important;
+}
+
+.dashboard-budget-section .section-header .flex h2 {
+  margin-right: 8px !important;
+}
+
+/* 强制确保仪表盘预算卡片样式不被其他页面影响 */
+.dashboard-budget-section .dashboard-budget-card {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+/* 确保全局的budget-card样式不会影响仪表盘组件 */
+.dashboard-budget-section .budget-card {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+/* 强制覆盖transactions页面的budget-info渐变背景样式 */
+.dashboard-budget-section .budget-info,
+.dashboard-budget-card .budget-info {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  padding: 0 !important;
+  position: static !important;
+  overflow: visible !important;
+}
+
+/* 移除transactions页面budget-info的伪元素 */
+.dashboard-budget-section .budget-info::before,
+.dashboard-budget-card .budget-info::before {
+  display: none !important;
+}

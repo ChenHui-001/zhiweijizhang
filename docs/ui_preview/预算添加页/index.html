@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>只为记账 - 添加预算</title>
+    <link rel="stylesheet" href="../预算列表页/styles.css">
+    <link rel="stylesheet" href="budget_form.css">
+    <link rel="stylesheet" href="budget_add.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部导航栏 -->
+        <header class="header">
+            <button class="icon-button back-button"><i class="fas fa-arrow-left"></i></button>
+            <div class="header-title">添加预算</div>
+            <button class="icon-button save-button"><i class="fas fa-check"></i></button>
+        </header>
+
+        <!-- 主要内容区域 -->
+        <main class="main-content">
+            <form class="budget-form">
+                <!-- 预算类型说明 -->
+                <div class="form-section">
+                    <div class="budget-type-card">
+                        <div class="type-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="type-info">
+                            <div class="type-name">通用预算</div>
+                            <div class="type-description">创建长期或无期限的预算，适用于特定目标或项目。</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 基本信息 -->
+                <div class="form-section">
+                    <div class="section-title">基本信息</div>
+
+                    <div class="form-group">
+                        <label for="budget-name">预算名称</label>
+                        <input type="text" id="budget-name" placeholder="输入预算名称">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="budget-amount">预算金额</label>
+                        <div class="amount-input">
+                            <span class="currency-symbol">¥</span>
+                            <input type="number" id="budget-amount" placeholder="0.00">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 时间设置 -->
+                <div class="form-section">
+                    <div class="section-title">时间设置</div>
+
+                    <div class="form-group">
+                        <label for="budget-start-date">开始日期</label>
+                        <div class="date-input">
+                            <input type="date" id="budget-start-date">
+                            <i class="fas fa-calendar"></i>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="budget-end-date">结束日期</label>
+                        <div class="date-input">
+                            <input type="date" id="budget-end-date">
+                            <i class="fas fa-calendar"></i>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="toggle-container">
+                            <span>无期限预算</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="unlimited-budget">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="help-text">
+                            <i class="fas fa-info-circle"></i>
+                            <span>启用无期限预算后，预算将没有结束日期</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 分类预算设置 -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <div class="section-title">分类预算</div>
+                        <div class="toggle-container">
+                            <span>启用分类预算</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="enable-category-budget" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="category-budget-container">
+                        <div class="category-selector">
+                            <div class="category-option active">
+                                <div class="category-icon" style="background-color: #FF5722;">
+                                    <i class="fas fa-utensils"></i>
+                                </div>
+                                <span>餐饮</span>
+                            </div>
+
+                            <div class="category-option">
+                                <div class="category-icon" style="background-color: #2196F3;">
+                                    <i class="fas fa-shopping-bag"></i>
+                                </div>
+                                <span>购物</span>
+                            </div>
+
+                            <div class="category-option">
+                                <div class="category-icon" style="background-color: #4CAF50;">
+                                    <i class="fas fa-bus"></i>
+                                </div>
+                                <span>交通</span>
+                            </div>
+
+                            <div class="category-option">
+                                <div class="category-icon" style="background-color: #9C27B0;">
+                                    <i class="fas fa-gamepad"></i>
+                                </div>
+                                <span>娱乐</span>
+                            </div>
+                        </div>
+
+                        <div class="category-budget-form">
+                            <div class="selected-category">
+                                <div class="category-icon" style="background-color: #FF5722;">
+                                    <i class="fas fa-utensils"></i>
+                                </div>
+                                <span>餐饮</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="category-budget-amount">分类预算金额</label>
+                                <div class="amount-input">
+                                    <span class="currency-symbol">¥</span>
+                                    <input type="number" id="category-budget-amount" placeholder="0.00">
+                                </div>
+                            </div>
+
+                            <div class="category-budget-info">
+                                <div class="info-item">
+                                    <span class="info-label">总预算:</span>
+                                    <span class="info-value">¥3,000.00</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">已分配:</span>
+                                    <span class="info-value">¥1,500.00</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">剩余可分配:</span>
+                                    <span class="info-value">¥1,500.00</span>
+                                </div>
+                            </div>
+
+                            <button type="button" class="add-category-budget-button">添加分类预算</button>
+                        </div>
+
+                        <div class="category-budget-list">
+                            <div class="category-budget-item">
+                                <div class="category-info">
+                                    <div class="category-icon small" style="background-color: #FF5722;">
+                                        <i class="fas fa-utensils"></i>
+                                    </div>
+                                    <span>餐饮</span>
+                                </div>
+                                <div class="category-budget-amount">¥1,000.00</div>
+                                <button class="remove-button"><i class="fas fa-times"></i></button>
+                            </div>
+
+                            <div class="category-budget-item">
+                                <div class="category-info">
+                                    <div class="category-icon small" style="background-color: #2196F3;">
+                                        <i class="fas fa-shopping-bag"></i>
+                                    </div>
+                                    <span>购物</span>
+                                </div>
+                                <div class="category-budget-amount">¥500.00</div>
+                                <button class="remove-button"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <!-- 提交按钮 -->
+                <button type="submit" class="submit-button">保存预算</button>
+            </form>
+        </main>
+    </div>
+</body>
+</html>

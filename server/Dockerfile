@@ -1,0 +1,138 @@
+# 多阶段构建 - 构建阶段
+FROM node:18-alpine AS builder
+
+# 设置工作目录
+WORKDIR /app
+
+# 设置构建时环境变量，优化网络性能
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
+# 安装构建所需的系统依赖
+RUN apk update && apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    curl \
+    openssl \
+    openssl-dev \
+    bash \
+    postgresql-client \
+    && rm -rf /var/cache/apk/*
+
+# 复制package文件
+COPY server/package*.json ./
+
+# 配置npm使用国内镜像源，提高下载速度
+RUN npm config set registry https://registry.npmmirror.com
+
+# 安装所有依赖（包括devDependencies用于构建），使用重试机制
+RUN echo "开始安装npm依赖..." && \
+    npm install --legacy-peer-deps --timeout=600000 || ( \
+        echo "第一次安装失败，切换到官方源重试..." && \
+        npm config set registry https://registry.npmjs.org && \
+        npm install --legacy-peer-deps --timeout=600000 ) || ( \
+        echo "第二次安装失败，切换到腾讯云镜像源重试..." && \
+        npm config set registry https://mirrors.cloud.tencent.com/npm/ && \
+        npm install --legacy-peer-deps --timeout=600000 ) || ( \
+        echo "第三次安装失败，回到默认设置做最后尝试..." && \
+        npm config set registry https://registry.npmjs.org && \
+        npm install --legacy-peer-deps --timeout=600000 )
+
+# 复制源代码（排除.env文件以避免覆盖Docker环境变量）
+COPY server/ .
+# 复制docker配置文件（用于数据库初始化）
+COPY docker/config/ ../docker/config/
+# 删除可能存在的.env文件，确保使用Docker环境变量
+RUN rm -f .env .env.local .env.production .env.development 2>/dev/null || true
+
+# 生成Prisma客户端 - 忽略校验和检查避免网络问题
+ENV PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
+RUN npx prisma generate || \
+    npx prisma generate || \
+    npx prisma generate
+
+# 构建TypeScript代码，增加重试机制
+RUN npm run build || \
+    npm run build || \
+    npm run build
+
+# 清理开发依赖，只保留生产依赖
+RUN npm prune --production --legacy-peer-deps || \
+    npm prune --production --legacy-peer-deps
+
+# 清理npm缓存
+RUN npm cache clean --force || true
+
+# 生产阶段
+FROM node:18-alpine AS production
+
+# 安装运行时必要的系统依赖
+RUN apk update && apk add --no-cache \
+    bash \
+    postgresql-client \
+    curl \
+    openssl \
+    dumb-init \
+    libc6-compat \
+    && rm -rf /var/cache/apk/*
+
+# 创建非root用户
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# 设置工作目录
+WORKDIR /app
+
+# 从构建阶段复制package文件
+COPY --from=builder /app/package*.json ./
+
+# 从构建阶段复制已清理的node_modules（只包含生产依赖）
+COPY --from=builder /app/node_modules ./node_modules
+
+# 从构建阶段复制编译后的代码
+COPY --from=builder /app/dist ./dist
+
+# 复制微信相关的静态文件（绑定页面等）
+COPY --from=builder /app/public ./public
+
+# 只复制必要的运行时文件
+COPY --from=builder /app/scripts/deployment/ ./scripts/deployment/
+COPY --from=builder /app/prisma/schema.prisma ./prisma/
+COPY --from=builder /app/migrations/ ./migrations/
+
+# 复制数据库初始化脚本到容器中
+COPY --from=builder /app/../docker/config/init.sql ./docker/init.sql
+
+# 复制计划任务脚本到容器内
+COPY docker/scripts/ ./scripts/scheduled/
+
+# 创建必要目录并设置权限
+RUN mkdir -p uploads && \
+    mkdir -p scripts/custom && \
+    chown -R nodejs:nodejs /app && \
+    chmod +x scripts/deployment/*.sh && \
+    chmod +x migrations/migration-manager.js && \
+    chmod +x migrations/scripts/data-integrity-check.js && \
+    chmod +x migrations/scripts/migration-status.js && \
+    find scripts/scheduled -type f -name "*.sh" -exec chmod +x {} \;
+
+# 切换到非root用户
+USER nodejs
+
+# 暴露端口
+EXPOSE 3000
+
+# 设置环境变量
+ENV NODE_ENV=production
+ENV DOCKER_ENV=true
+ENV PORT=3000
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:3000/api/health || exit 1
+
+# 使用dumb-init作为PID 1，提供更好的信号处理
+ENTRYPOINT ["dumb-init", "--"]
+
+# 启动命令 - 使用安全的启动脚本
+CMD ["bash", "scripts/deployment/start.sh"]

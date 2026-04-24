@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "es2016",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "rootDir": ".",
+    "outDir": "./dist",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "resolveJsonModule": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "baseUrl": ".",
+    "paths": {
+      "@server/*": ["server/src/*"],
+      "@client/*": ["client/src/*"],
+      "@shared/*": ["shared/*"]
+    }
+  },
+  "include": ["server/src/**/*", "client/src/**/*", "shared/**/*", "docs/fixes/修复预算参考/fix-budget-assignment-cjs.js"],
+  "exclude": ["node_modules", "dist", "apps/**/*", "packages/mobile/**/*"]
+}

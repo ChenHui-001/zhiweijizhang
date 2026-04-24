@@ -1,0 +1,268 @@
+/* 设置页面样式 */
+
+/* 应用容器 */
+.app-container {
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+  min-height: 100vh;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+/* 顶部导航栏样式已移至global-styles.css */
+
+.header-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.icon-button {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 18px;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.icon-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* 主要内容区域 */
+.main-content {
+  flex: 1;
+  overflow-y: visible;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 72px;
+  height: auto;
+  min-height: 100%;
+  max-height: none;
+}
+
+/* 用户卡片 */
+.user-card {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  background-color: var(--card-background);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.user-avatar {
+  margin-right: 16px;
+  flex-shrink: 0;
+}
+
+.user-info {
+  flex: 1;
+  min-width: 0; /* 防止内容溢出 */
+}
+
+.user-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.user-email {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.user-checkin {
+  margin-top: 8px;
+}
+
+/* 用户快捷操作按钮 */
+.user-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background-color: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  flex: 1;
+  justify-content: center;
+}
+
+.action-button:hover {
+  background-color: var(--card-background);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.action-button i {
+  font-size: 16px;
+}
+
+.checkin-button {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.checkin-button:hover {
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+.checkin-button.checked-in {
+  border-color: #10b981;
+  color: #10b981;
+  background-color: rgba(16, 185, 129, 0.05);
+}
+
+.checkin-button.checked-in:hover {
+  background-color: rgba(16, 185, 129, 0.1);
+}
+
+.membership-button {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.membership-button:hover {
+  background-color: rgba(245, 158, 11, 0.05);
+}
+
+/* 设置组 */
+.settings-group {
+  margin-bottom: 24px;
+}
+
+.group-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  padding-left: 4px;
+}
+
+/* 设置项 */
+.settings-item {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background-color: var(--card-background);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  width: 100%;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.settings-item:hover {
+  background-color: var(--background-color);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.item-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--background-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  color: var(--primary-color);
+}
+
+.item-content {
+  flex: 1;
+}
+
+.item-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.item-description {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.item-action {
+  color: var(--text-secondary);
+}
+
+/* 退出登录按钮 - 使用更具体的选择器确保优先级 */
+.settings-page .logout-button,
+.main-content .logout-button,
+button.logout-button {
+  width: 100% !important;
+  padding: 16px !important;
+  background-color: var(--card-background) !important;
+  border: 1px solid var(--error-color) !important;
+  border-radius: 12px !important;
+  color: var(--error-color) !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  margin-top: 24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.settings-page .logout-button:hover,
+.main-content .logout-button:hover,
+button.logout-button:hover {
+  background-color: rgba(239, 68, 68, 0.05) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+
+/* 版本信息 */
+.version-info {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 24px;
+  margin-bottom: 16px;
+}
