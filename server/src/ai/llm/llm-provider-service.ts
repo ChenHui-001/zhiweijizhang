@@ -85,7 +85,6 @@ export class LLMProviderService {
     source?: 'App' | 'WeChat' | 'API',
   ): Promise<string | null> {
     // 🚀 禁用多提供商模式，始终返回null使用自定义AI
-    logger.info('多提供商模式已禁用，使用自定义AI');
     return null;
   }
 
