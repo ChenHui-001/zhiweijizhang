@@ -24,6 +24,7 @@ export class CustomProvider implements LLMProvider {
       modelName: options.model,
       temperature: options.temperature,
       maxTokens: options.maxTokens,
+      timeout: 60000, // 60秒超时
     };
 
     // 自定义提供商必须提供baseUrl
@@ -160,6 +161,7 @@ export class CustomProvider implements LLMProvider {
           Authorization: `Bearer ${options.apiKey}`,
           'Content-Type': 'application/json',
         },
+        timeout: 60000, // 60秒超时
       });
 
       const data = response.data;
