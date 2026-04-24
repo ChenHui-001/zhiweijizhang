@@ -55,6 +55,9 @@ const nextConfig = {
       '@/styles': path.resolve(__dirname, 'src/styles'),
       '@/utils': path.resolve(__dirname, 'src/utils'),
       '@/types': path.resolve(__dirname, 'src/types'),
+      // 内部包别名
+      '@zhiweijz/core': path.resolve(__dirname, '../../packages/core/src'),
+      '@zhiweijz/web': path.resolve(__dirname, '../../packages/web/src'),
     };
     
     // 确保模块解析路径正确
