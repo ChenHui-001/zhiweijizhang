@@ -2,7 +2,6 @@ import { logger } from '../utils/logger';
 import { Router } from 'express';
 import { WechatController } from '../controllers/wechat.controller';
 import { authenticate } from '../middleware/auth.middleware';
-import { dailyFirstVisitGift } from '../middleware/daily-gift.middleware';
 import authRoutes from './auth.routes';
 import userRoutes from './user.routes';
 import userSettingRoutes from './user-setting.routes';
@@ -27,26 +26,12 @@ import fileStorageRoutes from './file-storage.routes';
 import imageRecognitionRoutes from './image-recognition.routes';
 import imageProxyRoutes from './image-proxy.routes';
 import multimodalAIRoutes from './multimodal-ai.routes';
-import accountingPointsRoutes from './accounting-points.routes';
-import membershipRoutes from './membership.routes';
 import paymentRoutes from './payment.routes';
-import androidH5PaymentRoutes from './android-h5-payment.routes';
 import webhookRoutes from './webhook.routes';
 import versionRoutes from './version.routes';
 import userAIConfigRoutes from './user-ai-config.routes';
-import { MembershipService } from '../services/membership.service';
 
 const router = Router();
-
-// 添加获取系统功能配置的公共接口（不需要认证）
-router.get('/system/features', (req, res) => {
-  const service = new MembershipService();
-
-  res.json({
-    membershipEnabled: service.isEnabled(),
-    accountingPointsEnabled: service.isAccountingPointsEnabled()
-  });
-});
 
 // 添加公共系统接口（不需要认证）
 router.use('/system', systemRoutes);
@@ -57,19 +42,19 @@ router.use('/version', versionRoutes);
 // 注册路由
 router.use('/auth', authRoutes);
 
-// 需要认证和每日赠送检测的路由
-router.use('/users', authenticate, dailyFirstVisitGift, userRoutes);
-router.use('/user-settings', authenticate, dailyFirstVisitGift, userSettingRoutes);
-router.use('/categories', authenticate, dailyFirstVisitGift, categoryRoutes);
-router.use('/user-category-configs', authenticate, dailyFirstVisitGift, userCategoryConfigRoutes);
-router.use('/transactions', authenticate, dailyFirstVisitGift, transactionRoutes);
-router.use('/tags', authenticate, dailyFirstVisitGift, tagRoutes);
-router.use('/budgets', authenticate, dailyFirstVisitGift, budgetRoutes);
-router.use('/category-budgets', authenticate, dailyFirstVisitGift, categoryBudgetRoutes);
-router.use('/account-books', authenticate, dailyFirstVisitGift, accountBookRoutes);
-router.use('/families', authenticate, dailyFirstVisitGift, familyRoutes);
-router.use('/statistics', authenticate, dailyFirstVisitGift, statisticsRoutes);
-router.use('/security', authenticate, dailyFirstVisitGift, securityRoutes);
+// 需要认证的路由
+router.use('/users', authenticate, userRoutes);
+router.use('/user-settings', authenticate, userSettingRoutes);
+router.use('/categories', authenticate, categoryRoutes);
+router.use('/user-category-configs', authenticate, userCategoryConfigRoutes);
+router.use('/transactions', authenticate, transactionRoutes);
+router.use('/tags', authenticate, tagRoutes);
+router.use('/budgets', authenticate, budgetRoutes);
+router.use('/category-budgets', authenticate, categoryBudgetRoutes);
+router.use('/account-books', authenticate, accountBookRoutes);
+router.use('/families', authenticate, familyRoutes);
+router.use('/statistics', authenticate, statisticsRoutes);
+router.use('/security', authenticate, securityRoutes);
 // AI路由 - 大部分需要认证，但某些接口除外
 router.use('/ai', (req, res, next) => {
   // 不需要认证的接口列表
@@ -87,19 +72,16 @@ router.use('/ai', (req, res, next) => {
 
   // 其他AI接口需要认证
   authenticate(req, res, next);
-}, dailyFirstVisitGift, aiRoutes);
-router.use('/feedback', authenticate, dailyFirstVisitGift, feedbackRoutes);
-router.use('/system-config', authenticate, dailyFirstVisitGift, systemConfigRoutes);
-router.use('/user/announcements', authenticate, dailyFirstVisitGift, userAnnouncementRoutes);
-router.use('/file-storage', authenticate, dailyFirstVisitGift, fileStorageRoutes);
-router.use('/image-recognition', authenticate, dailyFirstVisitGift, imageRecognitionRoutes);
-router.use('/image-proxy', authenticate, dailyFirstVisitGift, imageProxyRoutes);
-router.use('/ai', authenticate, dailyFirstVisitGift, multimodalAIRoutes);
-router.use('/accounting-points', authenticate, dailyFirstVisitGift, accountingPointsRoutes);
-router.use('/membership', authenticate, dailyFirstVisitGift, membershipRoutes);
+}, aiRoutes);
+router.use('/feedback', authenticate, feedbackRoutes);
+router.use('/system-config', authenticate, systemConfigRoutes);
+router.use('/user/announcements', authenticate, userAnnouncementRoutes);
+router.use('/file-storage', authenticate, fileStorageRoutes);
+router.use('/image-recognition', authenticate, imageRecognitionRoutes);
+router.use('/image-proxy', authenticate, imageProxyRoutes);
+router.use('/ai', authenticate, multimodalAIRoutes);
 router.use('/payment', paymentRoutes);
-router.use('/android-h5-payment', androidH5PaymentRoutes);
-router.use('/ai-config', authenticate, dailyFirstVisitGift, userAIConfigRoutes);
+router.use('/ai-config', authenticate, userAIConfigRoutes);
 
 // Webhook路由（不需要认证，但需要签名验证）
 router.use('/webhooks', webhookRoutes);

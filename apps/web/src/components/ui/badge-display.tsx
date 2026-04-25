@@ -1,7 +1,41 @@
 'use client';
 
 import { useState } from 'react';
-import membershipApi from '../../lib/api/membership-service';
+
+// Badge rarity utilities
+function getBadgeRarityColor(rarity: string): string {
+  switch (rarity) {
+    case 'COMMON':
+      return 'bg-gray-100 text-gray-700';
+    case 'UNCOMMON':
+      return 'bg-green-100 text-green-700';
+    case 'RARE':
+      return 'bg-blue-100 text-blue-700';
+    case 'EPIC':
+      return 'bg-purple-100 text-purple-700';
+    case 'LEGENDARY':
+      return 'bg-amber-100 text-amber-700';
+    default:
+      return 'bg-gray-100 text-gray-700';
+  }
+}
+
+function getBadgeRarityLabel(rarity: string): string {
+  switch (rarity) {
+    case 'COMMON':
+      return '普通';
+    case 'UNCOMMON':
+      return '稀有';
+    case 'RARE':
+      return '罕见';
+    case 'EPIC':
+      return '史诗';
+    case 'LEGENDARY':
+      return '传说';
+    default:
+      return '普通';
+  }
+}
 
 interface Badge {
   id: string;
@@ -114,10 +148,10 @@ export function BadgeDisplay({
             <span
               className={`
               inline-flex px-1 py-0.5 text-xs font-semibold rounded-full mt-1
-              ${membershipApi.getBadgeRarityColor(badge.rarity)}
+              ${getBadgeRarityColor(badge.rarity)}
             `}
             >
-              {membershipApi.getBadgeRarityLabel(badge.rarity)}
+              {getBadgeRarityLabel(badge.rarity)}
             </span>
           )}
 
@@ -135,7 +169,7 @@ export function BadgeDisplay({
               <div className="text-gray-300 text-xs mt-1">{badge.description}</div>
             )}
             <div className="text-gray-400 text-xs mt-1">
-              稀有度: {membershipApi.getBadgeRarityLabel(badge.rarity)}
+              稀有度: {getBadgeRarityLabel(badge.rarity)}
             </div>
             {userBadge && (
               <div className="text-gray-400 text-xs mt-1">

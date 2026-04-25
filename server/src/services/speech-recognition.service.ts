@@ -12,8 +12,6 @@ import {
 } from '../models/multimodal-ai.model';
 import { MultimodalAIConfigService } from './multimodal-ai-config.service';
 import { BaiduSpeechRecognitionService } from './speech-recognition-baidu.service';
-import AccountingPointsService from './accounting-points.service';
-import { MembershipService } from './membership.service';
 
 /**
  * 语音识别服务
@@ -22,81 +20,30 @@ import { MembershipService } from './membership.service';
 export class SpeechRecognitionService {
   private configService: MultimodalAIConfigService;
   private baiduService: BaiduSpeechRecognitionService;
-  private membershipService: MembershipService;
 
   constructor() {
     this.configService = new MultimodalAIConfigService();
     this.baiduService = new BaiduSpeechRecognitionService();
-    this.membershipService = new MembershipService();
   }
 
   /**
-   * 语音转文本（带记账点扣除）- 用于普通语音识别
+   * 语音转文本 - 直接调用原始方法，无需积分检查
    * @param request 语音识别请求
-   * @param userId 用户ID（用于记账点扣除）
+   * @param userId 用户ID
    */
   async speechToTextWithStandalonePointsDeduction(request: SpeechRecognitionRequest, userId: string): Promise<MultimodalAIResponse> {
-    // 检查记账点余额（普通语音识别需要1点）- 仅在记账点系统启用时检查
-    if (this.membershipService.isAccountingPointsEnabled()) {
-      const canUsePoints = await AccountingPointsService.canUsePoints(userId, AccountingPointsService.POINT_COSTS.voice);
-      if (!canUsePoints) {
-        return {
-          success: false,
-          error: '记账点余额不足，请进行签到获取记账点或开通捐赠会员，每天登录App以及签到总计可获得10点赠送记账点',
-          usage: { duration: 0 },
-        };
-      }
-    }
-
-    // 调用原始的语音识别方法
-    const result = await this.speechToText(request);
-
-    // 如果识别成功，扣除语音识别记账点（1点）- 仅在记账点系统启用时
-    if (result.success && this.membershipService.isAccountingPointsEnabled()) {
-      try {
-        await AccountingPointsService.deductPoints(userId, 'voice', AccountingPointsService.POINT_COSTS.voice);
-      } catch (pointsError) {
-        logger.error('扣除记账点失败:', pointsError);
-        // 记账点扣除失败不影响返回结果，但需要记录日志
-      }
-    }
-
-    return result;
+    logger.info(`✅ [语音识别] 用户 ${userId} 使用语音识别功能`);
+    return await this.speechToText(request);
   }
 
   /**
-   * 语音转文本（带记账点扣除）- 用于智能记账
+   * 语音转文本 - 用于智能记账，直接调用原始方法，无需积分检查
    * @param request 语音识别请求
-   * @param userId 用户ID（用于记账点扣除）
+   * @param userId 用户ID
    */
   async speechToTextWithPointsDeduction(request: SpeechRecognitionRequest, userId: string): Promise<MultimodalAIResponse> {
-    // 检查记账点余额（语音智能记账总共需要2点：语音识别1点+智能记账1点）- 仅在记账点系统启用时检查
-    if (this.membershipService.isAccountingPointsEnabled()) {
-      const totalRequiredPoints = AccountingPointsService.POINT_COSTS.voice + AccountingPointsService.POINT_COSTS.text;
-      const canUsePoints = await AccountingPointsService.canUsePoints(userId, totalRequiredPoints);
-      if (!canUsePoints) {
-        return {
-          success: false,
-          error: '记账点余额不足，请进行签到获取记账点或开通捐赠会员，每天登录App以及签到总计可获得10点赠送记账点',
-          usage: { duration: 0 },
-        };
-      }
-    }
-
-    // 调用原始的语音识别方法
-    const result = await this.speechToText(request);
-
-    // 如果识别成功，扣除语音识别记账点（1点）- 仅在记账点系统启用时
-    if (result.success && this.membershipService.isAccountingPointsEnabled()) {
-      try {
-        await AccountingPointsService.deductPoints(userId, 'voice', AccountingPointsService.POINT_COSTS.voice);
-      } catch (pointsError) {
-        logger.error('扣除记账点失败:', pointsError);
-        // 记账点扣除失败不影响返回结果，但需要记录日志
-      }
-    }
-
-    return result;
+    logger.info(`✅ [语音识别] 用户 ${userId} 使用语音识别功能（智能记账）`);
+    return await this.speechToText(request);
   }
 
   /**

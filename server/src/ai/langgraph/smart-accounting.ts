@@ -16,8 +16,6 @@ import {
 import NodeCache from 'node-cache';
 import prisma from '../../config/database';
 import dotenv from 'dotenv';
-import AccountingPointsService from '../../services/accounting-points.service';
-import { MembershipService } from '../../services/membership.service';
 import { getLocalDateString } from '../../utils/date-helpers';
 
 /**
@@ -28,7 +26,6 @@ export class SmartAccounting {
   private llmProviderService: LLMProviderService;
   private configService: MultimodalAIConfigService;
   private cache: NodeCache;
-  private membershipService: MembershipService;
 
   /**
    * 构造函数
@@ -41,7 +38,6 @@ export class SmartAccounting {
     this.llmProviderService = llmProviderService;
     this.configService = new MultimodalAIConfigService();
     this.cache = new NodeCache({ stdTTL: 3600 }); // 1小时过期
-    this.membershipService = new MembershipService();
   }
 
   /**

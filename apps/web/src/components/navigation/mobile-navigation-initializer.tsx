@@ -268,12 +268,6 @@ function getPageInfoFromPath(pathname: string): {
       canGoBack: true,
     },
     {
-      pattern: /^\/settings\/membership\/?$/,
-      level: PageLevel.MODAL,
-      title: '会员中心',
-      canGoBack: true,
-    },
-    {
       pattern: /^\/settings\/budgets\/?$/,
       level: PageLevel.MODAL,
       title: '预算设置',

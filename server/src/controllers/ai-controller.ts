@@ -7,10 +7,8 @@ import { LLMProviderService } from '../ai/llm/llm-provider-service';
 import { SmartAccounting } from '../ai/langgraph/smart-accounting';
 import { TransactionType } from '@prisma/client';
 import { SmartAccountingResult, SmartAccountingError, SmartAccountingResponse } from '../types/smart-accounting';
-import AccountingPointsService from '../services/accounting-points.service';
 import { SourceDetectionUtil } from '../utils/source-detection.util';
 import { TransactionService } from '../services/transaction.service';
-import { MembershipService } from '../services/membership.service';
 import { TransactionDuplicateDetectionService } from '../services/transaction-duplicate-detection.service';
 import { TransactionAttachmentRepository } from '../repositories/file-storage.repository';
 import { AttachmentType } from '../models/file-storage.model';
@@ -24,7 +22,6 @@ export class AIController {
   private llmProviderService: LLMProviderService;
   private smartAccounting: SmartAccounting;
   private transactionService: TransactionService;
-  private membershipService: MembershipService;
   private attachmentRepository: TransactionAttachmentRepository;
   private dateCorrectionMiddleware: DateCorrectionMiddleware;
 
@@ -35,7 +32,6 @@ export class AIController {
     this.llmProviderService = new LLMProviderService();
     this.smartAccounting = new SmartAccounting(this.llmProviderService);
     this.transactionService = new TransactionService();
-    this.membershipService = new MembershipService();
     this.attachmentRepository = new TransactionAttachmentRepository();
     this.dateCorrectionMiddleware = new DateCorrectionMiddleware();
   }
@@ -63,7 +59,6 @@ export class AIController {
    */
   public async handleSmartAccounting(req: Request, res: Response) {
     const userId = req.user?.id;
-    let pointsDeducted = false;
     try {
       const { description, source: requestSource, isFromImageRecognition } = req.body;
       const { accountId } = req.params;
@@ -119,20 +114,6 @@ export class AIController {
         return res.status(404).json({ error: '账本不存在或无权访问' });
       }
 
-      // 先扣除记账点（原子操作，防止竞态条件）
-      if (this.membershipService.isAccountingPointsEnabled()) {
-        try {
-          await AccountingPointsService.deductPoints(userId, 'text', AccountingPointsService.POINT_COSTS.text);
-          pointsDeducted = true;
-        } catch (pointsError) {
-          return res.status(402).json({
-            error: '记账点余额不足，请进行签到获取记账点或开通捐赠会员，每天登录App以及签到总计可获得10点赠送记账点',
-            type: 'INSUFFICIENT_POINTS',
-            required: AccountingPointsService.POINT_COSTS.text
-          });
-        }
-      }
-
       // 处理描述
       let result: SmartAccountingResponse;
       try {
@@ -145,27 +126,15 @@ export class AIController {
           source,
         );
       } catch (aiError) {
-        // AI操作失败，退还记账点
-        if (pointsDeducted) {
-          await AccountingPointsService.addPoints(userId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账失败退还');
-        }
         throw aiError;
       }
 
       if (!result) {
-        // AI操作失败，退还记账点
-        if (pointsDeducted) {
-          await AccountingPointsService.addPoints(userId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账失败退还');
-        }
         return res.status(500).json({ error: '智能记账处理失败' });
       }
 
       // 检查是否有错误信息（如内容与记账无关）
       if ('error' in result) {
-        // AI返回错误，退还记账点
-        if (pointsDeducted) {
-          await AccountingPointsService.addPoints(userId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账失败退还');
-        }
         // 检查是否是网络连接错误
         if (result.error.includes('ECONNRESET') || result.error.includes('socket hang up')) {
           return res.status(503).json({
@@ -219,10 +188,6 @@ export class AIController {
             };
           });
 
-          // 返回记录列表供用户选择，退还已扣除的记账点
-          if (pointsDeducted) {
-            await AccountingPointsService.addPoints(userId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账用户选择退还');
-          }
           return res.json({
             success: true,
             requiresUserSelection: true,
@@ -232,9 +197,6 @@ export class AIController {
         } catch (duplicateError) {
           logger.error('重复检测失败:', duplicateError);
           // 重复检测失败时，仍然返回记录列表，但不包含重复信息
-          if (pointsDeducted) {
-            await AccountingPointsService.addPoints(userId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账用户选择退还');
-          }
           const recordsWithoutDuplicateInfo = recordsWithDateValidation.map(record => ({
             ...record,
             duplicateDetection: {
@@ -256,10 +218,6 @@ export class AIController {
       // 如果有日期异常且不是多条记录选择流程，返回日期修正提示
       if (hasDateAnomalies && !isFromImageRecognition) {
         logger.info(`⚠️ [日期校验] 检测到日期异常，返回修正提示`);
-        // 日期异常需要用户确认，退还记账点
-        if (pointsDeducted) {
-          await AccountingPointsService.addPoints(userId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账日期异常退还');
-        }
         return res.json({
           requiresDateCorrection: true,
           records: recordsWithDateValidation,
@@ -272,10 +230,6 @@ export class AIController {
       res.json(finalResult);
     } catch (error) {
       logger.error('智能记账错误:', error);
-      // 外层异常，退还记账点
-      if (pointsDeducted) {
-        await AccountingPointsService.addPoints(userId!, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账异常退还');
-      }
       res.status(500).json({ error: '处理请求时出错' });
     }
   }
@@ -287,7 +241,6 @@ export class AIController {
    */
   public async createSelectedTransactions(req: Request, res: Response) {
     const userId = req.user?.id;
-    let pointsDeducted = false;
     try {
       const { selectedRecords, imageFileInfo } = req.body;
       const { accountId } = req.params;
@@ -323,20 +276,6 @@ export class AIController {
 
       if (!accountBook) {
         return res.status(404).json({ error: '账本不存在或无权访问' });
-      }
-
-      // 扣除记账点（仅在记账点系统启用时）
-      if (this.membershipService.isAccountingPointsEnabled()) {
-        try {
-          await AccountingPointsService.deductPoints(userId, 'text', AccountingPointsService.POINT_COSTS.text);
-          pointsDeducted = true;
-        } catch (pointsError) {
-          logger.error('扣除记账点失败:', pointsError);
-          return res.status(402).json({
-            error: '记账点余额不足，请进行签到获取记账点或开通捐赠会员',
-            type: 'INSUFFICIENT_POINTS',
-          });
-        }
       }
 
       // 创建选中的记账记录
@@ -406,10 +345,6 @@ export class AIController {
           message: `成功创建 ${createdTransactions.length} 条记账记录${errors.length > 0 ? `，${errors.length} 条失败` : ''}`,
         });
       } else {
-        // 全部记录创建失败，退还记账点
-        if (pointsDeducted) {
-          await AccountingPointsService.addPoints(userId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账全部失败退还');
-        }
         res.status(400).json({
           success: false,
           error: '所有记账记录创建失败',
@@ -418,10 +353,6 @@ export class AIController {
       }
     } catch (error) {
       logger.error('创建选择记账记录错误:', error);
-      // 外层异常，退还记账点
-      if (pointsDeducted && userId) {
-        await AccountingPointsService.addPoints(userId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账异常退还');
-      }
       res.status(500).json({ error: '处理请求时出错' });
     }
   }
@@ -1140,7 +1071,6 @@ export class AIController {
    */
   public async handleSmartAccountingDirectWithBody(req: Request, res: Response) {
     const requestUserId = req.user?.id; // API调用者（如A账号）
-    let pointsDeducted = false;
     try {
       const { description, accountBookId, userName, includeDebugInfo } = req.body;
 
@@ -1245,20 +1175,6 @@ export class AIController {
 
       logger.info(`📝 [记账处理] 实际记账用户: ${actualUserName} (ID: ${actualUserId})`);
 
-      // 先扣除记账点（原子操作，防止竞态条件）- 使用请求发起者的记账点
-      if (this.membershipService.isAccountingPointsEnabled()) {
-        try {
-          await AccountingPointsService.deductPoints(requestUserId, 'text', AccountingPointsService.POINT_COSTS.text);
-          pointsDeducted = true;
-        } catch (pointsError) {
-          return res.status(402).json({
-            error: '记账点余额不足，请进行签到获取记账点或开通捐赠会员，每天登录App以及签到总计可获得10点赠送记账点',
-            type: 'INSUFFICIENT_POINTS',
-            required: AccountingPointsService.POINT_COSTS.text
-          });
-        }
-      }
-
       // 使用实际用户ID进行智能记账分析
       let smartResult: SmartAccountingResponse;
       try {
@@ -1271,27 +1187,15 @@ export class AIController {
           source,
         );
       } catch (aiError) {
-        // AI操作失败，退还记账点
-        if (pointsDeducted) {
-          await AccountingPointsService.addPoints(requestUserId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账失败退还');
-        }
         throw aiError;
       }
 
       if (!smartResult) {
-        // AI操作失败，退还记账点
-        if (pointsDeducted) {
-          await AccountingPointsService.addPoints(requestUserId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账失败退还');
-        }
         return res.status(500).json({ error: '智能记账处理失败' });
       }
 
       // 检查是否有错误信息（如内容与记账无关）
       if ('error' in smartResult) {
-        // AI返回错误，退还记账点
-        if (pointsDeducted) {
-          await AccountingPointsService.addPoints(requestUserId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账失败退还');
-        }
         // 其他错误（如内容与记账无关）
         return res.status(400).json({ error: smartResult.error });
       }
@@ -1424,10 +1328,6 @@ export class AIController {
         res.status(201).json(responseData);
       } catch (createError) {
         logger.error('创建记账记录错误:', createError);
-        // 创建失败，退还记账点
-        if (pointsDeducted) {
-          await AccountingPointsService.addPoints(requestUserId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账创建失败退还');
-        }
         // 即使创建失败，也返回智能记账结果
         res.status(500).json({
           error: '创建记账记录失败',
@@ -1436,10 +1336,6 @@ export class AIController {
       }
     } catch (error) {
       logger.error('智能记账直接创建错误:', error);
-      // 外层异常，退还记账点
-      if (pointsDeducted && requestUserId) {
-        await AccountingPointsService.addPoints(requestUserId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账异常退还');
-      }
       res.status(500).json({ error: '处理请求时出错' });
     }
   }
@@ -1451,7 +1347,6 @@ export class AIController {
    */
   public async handleSmartAccountingDirect(req: Request, res: Response) {
     const userId = req.user?.id;
-    let pointsDeducted = false;
     try {
       const { description, attachmentFileId, source: requestSource, isFromImageRecognition } = req.body;
       const { accountId } = req.params;
@@ -1507,21 +1402,6 @@ export class AIController {
         return res.status(404).json({ error: '账本不存在或无权访问' });
       }
 
-      // 先扣除记账点（原子操作，防止竞态条件）
-      let pointsDeducted = false;
-      if (this.membershipService.isAccountingPointsEnabled()) {
-        try {
-          await AccountingPointsService.deductPoints(userId, 'text', AccountingPointsService.POINT_COSTS.text);
-          pointsDeducted = true;
-        } catch (pointsError) {
-          return res.status(402).json({
-            error: '记账点余额不足，请进行签到获取记账点或开通捐赠会员，每天登录App以及签到总计可获得10点赠送记账点',
-            type: 'INSUFFICIENT_POINTS',
-            required: AccountingPointsService.POINT_COSTS.text
-          });
-        }
-      }
-
       // 处理描述，获取智能记账结果
       let result: SmartAccountingResponse;
       try {
@@ -1534,27 +1414,15 @@ export class AIController {
           source,
         );
       } catch (aiError) {
-        // AI操作失败，退还记账点
-        if (pointsDeducted) {
-          await AccountingPointsService.addPoints(userId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账失败退还');
-        }
         throw aiError;
       }
 
       if (!result) {
-        // AI操作失败，退还记账点
-        if (pointsDeducted) {
-          await AccountingPointsService.addPoints(userId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账失败退还');
-        }
         return res.status(500).json({ error: '智能记账处理失败' });
       }
 
       // 检查是否有错误信息（如内容与记账无关）
       if ('error' in result) {
-        // AI返回错误，退还记账点
-        if (pointsDeducted) {
-          await AccountingPointsService.addPoints(userId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账失败退还');
-        }
         // 其他错误（如内容与记账无关）
         return res.status(400).json({ error: result.error });
       }
@@ -1582,10 +1450,6 @@ export class AIController {
         // 如果有日期异常，返回修正提示（不直接创建）
         if (hasDateAnomalies) {
           logger.info(`⚠️ [日期校验-直接记账] 检测到日期异常，返回修正提示`);
-          // 日期异常需要用户确认，退还记账点
-          if (pointsDeducted) {
-            await AccountingPointsService.addPoints(userId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账日期异常退还');
-          }
           return res.json({
             requiresDateCorrection: true,
             records: recordsWithDateValidation,
@@ -1619,10 +1483,6 @@ export class AIController {
               };
             });
 
-            // 返回记录列表供用户选择，退还记账点
-            if (pointsDeducted) {
-              await AccountingPointsService.addPoints(userId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账用户选择退还');
-            }
             return res.json({
               success: true,
               requiresUserSelection: true,
@@ -1641,10 +1501,6 @@ export class AIController {
               },
             }));
 
-            // 返回记录列表供用户选择，退还记账点
-            if (pointsDeducted) {
-              await AccountingPointsService.addPoints(userId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账用户选择退还');
-            }
             return res.json({
               success: true,
               requiresUserSelection: true,
@@ -1858,10 +1714,6 @@ export class AIController {
         }
       } catch (createError) {
         logger.error('创建记账记录错误:', createError);
-        // 创建失败，退还记账点
-        if (pointsDeducted) {
-          await AccountingPointsService.addPoints(userId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账创建失败退还');
-        }
         // 即使创建失败，也返回智能记账结果
         res.status(500).json({
           error: '创建记账记录失败',
@@ -1870,10 +1722,6 @@ export class AIController {
       }
     } catch (error) {
       logger.error('智能记账直接创建错误:', error);
-      // 外层异常，退还记账点
-      if (pointsDeducted && userId) {
-        await AccountingPointsService.addPoints(userId, 'refund', AccountingPointsService.POINT_COSTS.text, 'gift', 'AI记账异常退还');
-      }
       res.status(500).json({ error: '处理请求时出错' });
     }
   }

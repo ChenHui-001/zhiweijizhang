@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useAdminDashboard } from '@/store/admin/useAdminDashboard';
-import { useSystemConfig } from '@/hooks/useSystemConfig';
-import { adminApi, ADMIN_API_ENDPOINTS } from '@/lib/admin-api-client';
 import { StatsCard } from './StatsCard';
 import { ChartCard } from './ChartCard';
 import { SystemResourcesCard } from './SystemResourcesCard';
@@ -12,14 +10,9 @@ import { DailyActiveStatsCard } from './DailyActiveStatsCard';
 import {
   UsersIcon,
   CreditCardIcon,
-  UserPlusIcon,
   PlusIcon,
   BookOpenIcon,
   UserGroupIcon,
-  TrophyIcon,
-  StarIcon,
-  ChartPieIcon,
-  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
 const PERIOD_OPTIONS = [
@@ -29,7 +22,6 @@ const PERIOD_OPTIONS = [
 ];
 
 export function AdminDashboard() {
-  const { config } = useSystemConfig();
   const {
     overview,
     userStats,
@@ -46,38 +38,12 @@ export function AdminDashboard() {
 
   const [selectedPeriod, setSelectedPeriod] = useState('7d');
   const [selectedDays, setSelectedDays] = useState(7);
-  const [membershipStats, setMembershipStats] = useState<any>(null);
-  const [membershipLoading, setMembershipLoading] = useState(false);
 
-  // 获取会员统计数据
-  const fetchMembershipStats = async () => {
-    // 只有在会员系统启用时才获取数据
-    if (!config.membershipEnabled) {
-      return;
-    }
-
-    try {
-      setMembershipLoading(true);
-      const response = await adminApi.get(ADMIN_API_ENDPOINTS.MEMBERSHIP_STATS);
-      const data = await response.json();
-      if (data.success) {
-        setMembershipStats(data.data);
-      }
-    } catch (error) {
-      console.error('获取会员统计失败:', error);
-    } finally {
-      setMembershipLoading(false);
-    }
-  };
-
-  // 初始化时获取日活跃统计、去重统计和会员统计
+  // 初始化时获取日活跃统计和去重统计
   useEffect(() => {
     fetchDailyActiveStats(selectedDays);
     fetchUniqueActiveStats(selectedDays);
-    if (config.membershipEnabled) {
-      fetchMembershipStats();
-    }
-  }, [fetchDailyActiveStats, fetchUniqueActiveStats, config.membershipEnabled]);
+  }, [fetchDailyActiveStats, fetchUniqueActiveStats]);
 
   const handlePeriodChange = async (period: string) => {
     setSelectedPeriod(period);
@@ -143,76 +109,6 @@ export function AdminDashboard() {
       ]
     : [];
 
-  // 会员统计卡片数据
-  const membershipStatsCards = membershipStats
-    ? [
-        {
-          title: '总会员数',
-          value: formatNumber(membershipStats.totalMembers),
-          icon: UsersIcon,
-          color: 'blue',
-          change: '所有注册用户',
-          changeType: 'neutral' as const,
-        },
-        {
-          title: '普通会员',
-          value: formatNumber(membershipStats.regularMembers),
-          icon: UserPlusIcon,
-          color: 'gray',
-          change: '默认状态用户',
-          changeType: 'neutral' as const,
-        },
-        {
-          title: '捐赠会员（壹）',
-          value: formatNumber(membershipStats.donationOneMembers),
-          icon: TrophyIcon,
-          color: 'yellow',
-          change: '基础捐赠会员',
-          changeType: 'positive' as const,
-        },
-        {
-          title: '捐赠会员（贰）',
-          value: formatNumber(membershipStats.donationTwoMembers),
-          icon: TrophyIcon,
-          color: 'orange',
-          change: '中级捐赠会员',
-          changeType: 'positive' as const,
-        },
-        {
-          title: '捐赠会员（叁）',
-          value: formatNumber(membershipStats.donationThreeMembers),
-          icon: TrophyIcon,
-          color: 'red',
-          change: '高级捐赠会员',
-          changeType: 'positive' as const,
-        },
-        {
-          title: '永久会员',
-          value: formatNumber(membershipStats.lifetimeMembers),
-          icon: TrophyIcon,
-          color: 'purple',
-          change: '终身会员',
-          changeType: 'positive' as const,
-        },
-        {
-          title: '活跃会员',
-          value: formatNumber(membershipStats.activeMembers),
-          icon: ChartPieIcon,
-          color: 'green',
-          change: '当前活跃付费会员',
-          changeType: 'positive' as const,
-        },
-        {
-          title: '即将到期',
-          value: formatNumber(membershipStats.expiringInWeek),
-          icon: ExclamationTriangleIcon,
-          color: 'amber',
-          change: '7天内到期',
-          changeType: 'warning' as const,
-        },
-      ]
-    : [];
-
   return (
     <div className="space-y-6">
       {/* 时间周期选择器 */}
@@ -250,29 +146,6 @@ export function AdminDashboard() {
           />
         ))}
       </div>
-
-      {/* 会员统计卡片 - 只在会员系统启用时显示 */}
-      {config.membershipEnabled && membershipStats && (
-        <>
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-900">会员统计</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
-            {membershipStatsCards.map((stat, index) => (
-              <StatsCard
-                key={`membership-${index}`}
-                title={stat.title}
-                value={stat.value}
-                icon={stat.icon}
-                color={stat.color as 'blue' | 'green' | 'purple' | 'orange' | 'red' | 'gray' | 'yellow' | 'amber'}
-                change={stat.change}
-                changeType={stat.changeType}
-                isLoading={membershipLoading}
-              />
-            ))}
-          </div>
-        </>
-      )}
 
       {/* 图表区域 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

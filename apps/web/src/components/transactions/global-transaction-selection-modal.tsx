@@ -6,7 +6,6 @@ import { TransactionSelectionModal } from './transaction-selection-modal';
 import { apiClient } from '@/lib/api-client';
 import { toast } from 'sonner';
 import { useDashboardStore } from '@/store/dashboard-store';
-import { useAccountingPointsStore } from '@/store/accounting-points-store';
 
 /**
  * 全局记录选择模态框组件
@@ -25,7 +24,6 @@ export function GlobalTransactionSelectionModal() {
   } = useTransactionSelectionStore();
 
   const { refreshDashboardData } = useDashboardStore();
-  const { fetchBalance } = useAccountingPointsStore();
 
   // 处理用户选择的记账记录
   const handleSelectedTransactions = async (selectedRecords: any[]) => {
@@ -54,10 +52,9 @@ export function GlobalTransactionSelectionModal() {
         if (response && response.success) {
           toast.success(`成功创建 ${response.count} 条记账记录`);
 
-          // 刷新仪表盘数据和记账点余额
+          // 刷新仪表盘数据
           try {
             await refreshDashboardData(accountBookId);
-            await fetchBalance();
           } catch (refreshError) {
             console.error('刷新数据失败:', refreshError);
           }

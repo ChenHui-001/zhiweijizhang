@@ -3,8 +3,6 @@ import crypto from 'crypto';
 import prisma from '../config/database';
 import { AIController } from '../controllers/ai-controller';
 import { SmartAccountingResult, SmartAccountingError } from '../types/smart-accounting';
-import AccountingPointsService from './accounting-points.service';
-import { MembershipService } from './membership.service';
 import { TransactionDuplicateDetectionService } from './transaction-duplicate-detection.service';
 import { DateCorrectionMiddleware, SmartAccountingResultWithValidation } from '../middleware/date-correction.middleware';
 import { WechatMessageFormatter, WechatWarningMessage } from './wechat-message-formatter.service';
@@ -19,77 +17,13 @@ export interface WechatSmartAccountingResult {
 
 export class WechatSmartAccountingService {
   private aiController: AIController;
-  private membershipService: MembershipService;
   private dateCorrectionMiddleware: DateCorrectionMiddleware;
   private messageFormatter: WechatMessageFormatter;
 
   constructor() {
     this.aiController = new AIController();
-    this.membershipService = new MembershipService();
     this.dateCorrectionMiddleware = new DateCorrectionMiddleware();
     this.messageFormatter = new WechatMessageFormatter();
-  }
-
-  /**
-   * 检查用户是否使用自定义AI服务
-   * @param userId 用户ID
-   * @param accountBookId 账本ID
-   * @returns true表示使用自定义AI，false表示使用官方AI
-   */
-  private async isUsingCustomAIService(userId: string, accountBookId: string): Promise<boolean> {
-    try {
-      // 获取用户的AI服务类型配置
-      const userServiceTypeSetting = await prisma.userSetting.findUnique({
-        where: {
-          userId_key: {
-            userId,
-            key: 'ai_service_type',
-          },
-        },
-      });
-
-      // 如果用户设置为自定义服务，使用自定义AI
-      if (userServiceTypeSetting?.value === 'custom') {
-        logger.info(`✅ [微信记账] 用户 ${userId} 使用自定义AI服务，免扣会员点数`);
-        return true;
-      }
-
-      // 如果设置为官方服务，使用官方AI
-      if (userServiceTypeSetting?.value === 'official') {
-        logger.info(`📌 [微信记账] 用户 ${userId} 使用官方AI服务，需要扣点`);
-        return false;
-      }
-
-      // 如果没有设置，检查账本是否绑定了自定义LLM设置
-      const accountBook = await prisma.accountBook.findUnique({
-        where: { id: accountBookId },
-        select: { userLLMSettingId: true },
-      });
-
-      if (accountBook?.userLLMSettingId) {
-        logger.info(`✅ [微信记账] 账本 ${accountBookId} 绑定了自定义LLM设置，用户使用自定义AI，免扣会员点数`);
-        return true;
-      }
-
-      // 如果账本没有绑定，检查用户是否有任何自定义LLM设置
-      const userLLMSetting = await prisma.userLLMSetting.findFirst({
-        where: { userId },
-        orderBy: { createdAt: 'desc' },
-      });
-
-      if (userLLMSetting) {
-        logger.info(`✅ [微信记账] 用户 ${userId} 配置了自定义LLM设置 "${userLLMSetting.name}"，免扣会员点数`);
-        return true;
-      }
-
-      // 默认使用官方AI服务，需要扣点
-      logger.info(`📌 [微信记账] 用户 ${userId} 未配置自定义AI，使用官方AI服务，需要扣点`);
-      return false;
-    } catch (error) {
-      logger.error('❌ [微信记账] 检查用户AI服务类型失败:', error);
-      // 检查失败时，默认不扣点（避免影响用户体验）
-      return true;
-    }
   }
 
   /**
@@ -115,22 +49,7 @@ export class WechatSmartAccountingService {
         };
       }
 
-      // 2. 检查是否使用自定义AI服务
-      const useCustomAI = await this.isUsingCustomAIService(userId, accountBookId);
-
-      // 3. 检查记账点余额（文字记账消费1点）- 仅在记账点系统启用时检查，且非自定义AI
-      if (!useCustomAI && this.membershipService.isAccountingPointsEnabled()) {
-        const canUsePoints = await AccountingPointsService.canUsePoints(userId, AccountingPointsService.POINT_COSTS.text);
-        if (!canUsePoints) {
-          return {
-            success: false,
-            message: '记账点余额不足，请进行签到获取记账点或开通捐赠会员，每天登录App以及签到总计可获得10点赠送记账点。\n\n💡 小提示：您也可以在"设置 → AI服务管理"中配置自定义AI服务，使用自定义AI将不消耗记账点。',
-            error: 'INSUFFICIENT_POINTS',
-          };
-        }
-      }
-
-      // 3. 调用智能记账分析
+      // 2. 调用智能记账分析
       const smartAccounting = this.aiController['smartAccounting'];
       if (!smartAccounting) {
         return {
@@ -186,20 +105,7 @@ export class WechatSmartAccountingService {
         logger.info(`⚠️ [微信日期校验] 检测到${dateWarning.correctedRecords.length}条记录日期异常，已自动修正`);
       }
 
-      // 6. 智能记账成功，扣除记账点（仅在记账点系统启用时，且非自定义AI）
-      if (!useCustomAI && this.membershipService.isAccountingPointsEnabled()) {
-        try {
-          logger.info(`📌 [微信记账] 使用官方AI服务，扣除记账点 ${AccountingPointsService.POINT_COSTS.text} 点`);
-          await AccountingPointsService.deductPoints(userId, 'text', AccountingPointsService.POINT_COSTS.text);
-        } catch (pointsError) {
-          logger.error('扣除记账点失败:', pointsError);
-          // 记账点扣除失败不影响返回结果，但需要记录日志
-        }
-      } else if (useCustomAI) {
-        logger.info(`✅ [微信记账] 使用自定义AI服务，免扣记账点`);
-      }
-
-      // 7. 如果需要创建记账记录
+      // 6. 如果需要创建记账记录
       if (createTransaction) {
         // 使用校验和修正后的记录
         const recordsToCreate = recordsWithDateValidation;

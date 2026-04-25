@@ -6,7 +6,6 @@
 import { logger } from '../../utils/logger';
 import { internalTaskRegistry } from './internal-task-registry';
 import { UserDeletionService } from '../../services/user-deletion.service';
-import MembershipExpiryCheckTask from '../../tasks/membership-expiry-check.task';
 import { WechatMediaService } from '../../services/wechat-media.service';
 import { dataAggregationService } from './data-aggregation.service';
 import { FileStorageService } from '../../services/file-storage.service';
@@ -33,19 +32,7 @@ export function registerAllInternalTasks(): void {
     }
   });
 
-  // 2. 会员到期检查任务
-  internalTaskRegistry.register({
-    key: 'membership-expiry-check',
-    name: '会员到期检查',
-    description: '检查并处理到期会员，自动降级会员等级',
-    suggestedCron: '30 * * * *', // 每小时第30分钟执行
-    execute: async () => {
-      const membershipExpiryTask = new MembershipExpiryCheckTask();
-      await membershipExpiryTask.checkAllMemberships();
-    }
-  });
-
-  // 3. 微信媒体文件清理任务
+  // 2. 微信媒体文件清理任务
   internalTaskRegistry.register({
     key: 'wechat-media-cleanup',
     name: '微信媒体文件清理',

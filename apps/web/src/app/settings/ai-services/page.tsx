@@ -8,8 +8,6 @@ import { PageContainer } from '@/components/layout/page-container';
 
 import { useGlobalAIStore } from '@/store/global-ai-store';
 import { useAuthStore } from '@/store/auth-store';
-import { useAccountingPointsStore } from '@/store/accounting-points-store';
-import { useMembershipStore } from '@/store/membership-store';
 import { useAIServicesStore } from '@/store/ai-services-store';
 import { useMobileBackHandler } from '@/hooks/use-mobile-back-handler';
 import { PageLevel } from '@/lib/mobile-navigation';
@@ -31,27 +29,12 @@ export default function AIServicesPage() {
   } = useGlobalAIStore();
 
   const {
-    balance,
-    transactions,
-    loading: pointsLoading,
-    fetchBalance,
-    fetchTransactions,
-  } = useAccountingPointsStore();
-
-  const {
-    membership,
-    loading: membershipLoading,
-    fetchMembershipInfo,
-  } = useMembershipStore();
-
-  const {
     services,
     isLoading: servicesLoading,
     fetchServices,
     deleteService,
   } = useAIServicesStore();
 
-  const [showTransactionHistory, setShowTransactionHistory] = useState(false);
   const [selectedServiceType, setSelectedServiceType] = useState<'official' | 'custom'>('official');
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -69,12 +52,10 @@ export default function AIServicesPage() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchUserAIEnabled();
-      fetchBalance();
-      fetchMembershipInfo();
       fetchServices();
       fetchGlobalConfig();
     }
-  }, [isAuthenticated, fetchUserAIEnabled, fetchBalance, fetchMembershipInfo, fetchServices, fetchGlobalConfig]);
+  }, [isAuthenticated, fetchUserAIEnabled, fetchServices, fetchGlobalConfig]);
 
   useEffect(() => {
     if (globalConfig?.serviceType) {
@@ -124,16 +105,7 @@ export default function AIServicesPage() {
     }
   };
 
-  const handleViewTransactionHistory = async () => {
-    if (!showTransactionHistory) {
-      await fetchTransactions(50);
-    }
-    setShowTransactionHistory(!showTransactionHistory);
-  };
-
-  const handleRefreshBalance = async () => {
-    await fetchBalance();
-    await fetchMembershipInfo();
+  const handleRefreshServices = async () => {
     await fetchServices();
   };
 
@@ -141,7 +113,7 @@ export default function AIServicesPage() {
     <div className={styles.actionButtons}>
       <button
         className={`${styles.iconButton} ${styles.refreshButton}`}
-        onClick={handleRefreshBalance}
+        onClick={handleRefreshServices}
         title="刷新"
       >
         <i className="fas fa-sync-alt"></i>
@@ -284,105 +256,13 @@ export default function AIServicesPage() {
             <div>
               <h4 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)', margin: '0 0 8px 0' }}>使用官方AI服务</h4>
               <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>
-                官方AI服务需要消耗记账点。请确保您的记账点余额充足。
+                官方AI服务由系统提供。
               </p>
-              <div style={{ marginTop: '12px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                  <i className="fas fa-keyboard" style={{ color: 'rgb(59, 130, 246)' }}></i>
-                  <span>文字记账：1 点</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                  <i className="fas fa-microphone" style={{ color: 'rgb(59, 130, 246)' }}></i>
-                  <span>语音记账：2 点</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <i className="fas fa-camera" style={{ color: 'rgb(59, 130, 246)' }}></i>
-                  <span>图片记账：3 点</span>
-                </div>
-              </div>
               <p style={{ marginTop: '12px', fontSize: '13px', color: 'var(--primary-color)' }}>
-                💡 推荐配置自定义AI服务，完全免费使用所有AI功能
+                💡 推荐配置自定义AI服务，享受更灵活的AI功能
               </p>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* 记账点余额 */}
-      {userAIEnabled && (
-        <div className={styles.globalAISwitch}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <div>
-              <h3 style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)', margin: '0 0 4px 0' }}>记账点余额</h3>
-              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>使用AI功能会消耗记账点</p>
-            </div>
-            <button onClick={handleViewTransactionHistory} className={styles.addServiceButton} style={{ backgroundColor: 'transparent', color: 'var(--primary-color)', border: '1px solid var(--primary-color)' }}>
-              <i className="fas fa-history"></i>
-              {showTransactionHistory ? '隐藏记录' : '查看记录'}
-            </button>
-          </div>
-
-          {(pointsLoading || membershipLoading) ? (
-            <div className={styles.loadingContainer}>
-              <div className={styles.loadingSpinner}></div>
-              <span>加载中...</span>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-              <div style={{ padding: '16px', backgroundColor: 'rgba(59, 130, 246, 0.05)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <i className="fas fa-coins" style={{ fontSize: '16px', color: 'var(--primary-color)' }}></i>
-                  <span style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-primary)' }}>总记账点</span>
-                </div>
-                <div style={{ fontSize: '24px', fontWeight: '600', color: 'var(--primary-color)' }}>{balance?.totalBalance || 0}</div>
-              </div>
-              <div style={{ padding: '16px', backgroundColor: 'rgba(34, 197, 94, 0.05)', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <i className="fas fa-crown" style={{ fontSize: '16px', color: 'rgb(34, 197, 94)' }}></i>
-                  <span style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-primary)' }}>会员点</span>
-                </div>
-                <div style={{ fontSize: '24px', fontWeight: '600', color: 'rgb(34, 197, 94)' }}>{balance?.memberBalance || 0}</div>
-              </div>
-              <div style={{ padding: '16px', backgroundColor: 'rgba(168, 85, 247, 0.05)', borderRadius: '8px', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <i className="fas fa-gift" style={{ fontSize: '16px', color: 'rgb(168, 85, 247)' }}></i>
-                  <span style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-primary)' }}>赠送点</span>
-                </div>
-                <div style={{ fontSize: '24px', fontWeight: '600', color: 'rgb(168, 85, 247)' }}>{balance?.giftBalance || 0}</div>
-              </div>
-            </div>
-          )}
-
-          {showTransactionHistory && (
-            <div style={{ marginTop: '16px' }}>
-              <h4 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)', margin: '0 0 12px 0' }}>使用记录</h4>
-              {transactions.length === 0 ? (
-                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  <p style={{ fontSize: '14px', margin: 0 }}>暂无使用记录</p>
-                </div>
-              ) : (
-                <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
-                  {transactions.map((transaction, index) => (
-                    <div key={transaction.id} style={{
-                      padding: '12px 16px',
-                      borderBottom: index < transactions.length - 1 ? '1px solid var(--border-color)' : 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                    }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-primary)', marginBottom: '2px' }}>{transaction.description}</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{new Date(transaction.createdAt).toLocaleString('zh-CN')}</div>
-                      </div>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: transaction.operation === 'deduct' ? 'rgb(239, 68, 68)' : 'rgb(34, 197, 94)' }}>
-                        {transaction.operation === 'deduct' ? '-' : '+'}{transaction.points}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
 

@@ -5,8 +5,6 @@ import { SpeechRecognitionService } from '../services/speech-recognition.service
 import { VisionRecognitionService } from '../services/vision-recognition.service';
 import { MultimodalAIConfigService } from '../services/multimodal-ai-config.service';
 import { FileStorageService } from '../services/file-storage.service';
-import AccountingPointsService from '../services/accounting-points.service';
-import { MembershipService } from '../services/membership.service';
 import {
   SpeechRecognitionRequest,
   VisionRecognitionRequest,
@@ -26,14 +24,12 @@ export class MultimodalAIController {
   private visionService: VisionRecognitionService;
   private configService: MultimodalAIConfigService;
   private fileStorageService: FileStorageService;
-  private membershipService: MembershipService;
 
   constructor() {
     this.speechService = new SpeechRecognitionService();
     this.visionService = new VisionRecognitionService();
     this.configService = new MultimodalAIConfigService();
     this.fileStorageService = FileStorageService.getInstance();
-    this.membershipService = new MembershipService();
   }
 
   /**
@@ -103,8 +99,8 @@ export class MultimodalAIController {
         format: req.body.format,
       };
 
-      // 调用语音识别服务（使用带记账点扣除的方法）
-      const result = await this.speechService.speechToTextWithStandalonePointsDeduction(speechRequest, userId);
+      // 调用语音识别服务
+      const result = await this.speechService.speechToText(speechRequest);
 
       isSuccess = result.success;
       if (!isSuccess) {
@@ -225,8 +221,8 @@ export class MultimodalAIController {
         return;
       }
 
-      // 调用图片识别服务（使用带记账点扣除的方法）
-      const result = await this.visionService.recognizeImageWithStandalonePointsDeduction(visionRequest, userId);
+      // 调用图片识别服务
+      const result = await this.visionService.recognizeImage(visionRequest);
 
       isSuccess = result.success;
       if (!isSuccess) {
@@ -321,13 +317,13 @@ export class MultimodalAIController {
         return;
       }
 
-      // 1. 语音识别（使用带记账点扣除的服务方法）
+      // 1. 语音识别
       const speechRequest: SpeechRecognitionRequest = {
         audioFile: req.file,
         language: 'zh',
       };
 
-      const speechResult = await this.speechService.speechToTextWithPointsDeduction(speechRequest, userId);
+      const speechResult = await this.speechService.speechToText(speechRequest);
 
       isSuccess = speechResult.success;
       if (!isSuccess) {
@@ -496,7 +492,7 @@ export class MultimodalAIController {
         detailLevel: 'high',
       };
 
-      const visionResult = await this.visionService.recognizeImageWithPointsDeduction(visionRequest, userId);
+      const visionResult = await this.visionService.recognizeImage(visionRequest);
 
       isSuccess = visionResult.success;
       if (!isSuccess) {

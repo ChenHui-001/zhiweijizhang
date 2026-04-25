@@ -9,10 +9,7 @@ import {
   VisionRecognitionConfig,
 } from '../models/multimodal-ai.model';
 import { MultimodalAIConfigService } from './multimodal-ai-config.service';
-import AccountingPointsService from './accounting-points.service';
-import { MembershipService } from './membership.service';
 import { VisionProviderManager } from '../ai/vision/vision-provider-manager';
-import prisma from '../config/database';
 
 /**
  * 视觉识别服务
@@ -20,144 +17,31 @@ import prisma from '../config/database';
  */
 export class VisionRecognitionService {
   private configService: MultimodalAIConfigService;
-  private membershipService: MembershipService;
   private providerManager: VisionProviderManager;
 
   constructor() {
     this.configService = new MultimodalAIConfigService();
-    this.membershipService = new MembershipService();
     this.providerManager = new VisionProviderManager();
   }
 
   /**
-   * 检查用户是否使用自定义AI服务
-   * @param userId 用户ID
-   * @returns true表示使用自定义AI，false表示使用官方AI
-   */
-  private async isUsingCustomAIService(userId: string): Promise<boolean> {
-    try {
-      // 获取用户的AI服务类型配置
-      const userServiceTypeSetting = await prisma.userSetting.findUnique({
-        where: {
-          userId_key: {
-            userId,
-            key: 'ai_service_type',
-          },
-        },
-      });
-
-      // 如果用户设置为自定义服务，使用自定义AI
-      if (userServiceTypeSetting?.value === 'custom') {
-        logger.info(`✅ [图片识别] 用户 ${userId} 使用自定义AI服务，免扣会员点数`);
-        return true;
-      }
-
-      // 如果设置为官方服务，使用官方AI
-      if (userServiceTypeSetting?.value === 'official') {
-        logger.info(`📌 [图片识别] 用户 ${userId} 使用官方AI服务，需要扣点`);
-        return false;
-      }
-
-      // 如果没有设置，检查用户是否有任何自定义LLM设置
-      const userLLMSetting = await prisma.userLLMSetting.findFirst({
-        where: { userId },
-        orderBy: { createdAt: 'desc' },
-      });
-
-      if (userLLMSetting) {
-        logger.info(`✅ [图片识别] 用户 ${userId} 配置了自定义LLM设置 "${userLLMSetting.name}"，免扣会员点数`);
-        return true;
-      }
-
-      // 默认使用官方AI服务，需要扣点
-      logger.info(`📌 [图片识别] 用户 ${userId} 未配置自定义AI，使用官方AI服务，需要扣点`);
-      return false;
-    } catch (error) {
-      logger.error('❌ [图片识别] 检查用户AI服务类型失败:', error);
-      // 检查失败时，默认不扣点（避免影响用户体验）
-      return true;
-    }
-  }
-
-  /**
-   * 图片识别（带记账点扣除）- 用于普通图片识别
+   * 图片识别 - 直接调用原始方法，无需积分检查
    * @param request 图片识别请求
-   * @param userId 用户ID（用于记账点扣除）
+   * @param userId 用户ID
    */
   async recognizeImageWithStandalonePointsDeduction(request: VisionRecognitionRequest, userId: string): Promise<MultimodalAIResponse> {
-    // 检查是否使用自定义AI服务
-    const useCustomAI = await this.isUsingCustomAIService(userId);
-
-    // 检查记账点余额（普通图片识别需要2点）- 仅在记账点系统启用时检查，且非自定义AI
-    if (!useCustomAI && this.membershipService.isAccountingPointsEnabled()) {
-      const canUsePoints = await AccountingPointsService.canUsePoints(userId, AccountingPointsService.POINT_COSTS.image);
-      if (!canUsePoints) {
-        return {
-          success: false,
-          error: '记账点余额不足，请进行签到获取记账点或开通捐赠会员，每天登录App以及签到总计可获得10点赠送记账点。\n\n💡 小提示：您也可以在"设置 → AI服务管理"中配置自定义AI服务，使用自定义AI将不消耗记账点。',
-          usage: { duration: 0 },
-        };
-      }
-    }
-
-    // 调用原始的图片识别方法
-    const result = await this.recognizeImage(request);
-
-    // 如果识别成功，扣除图片识别记账点（2点）- 仅在记账点系统启用时，且非自定义AI
-    if (result.success && !useCustomAI && this.membershipService.isAccountingPointsEnabled()) {
-      try {
-        logger.info(`📌 [图片识别] 使用官方AI服务，扣除记账点 ${AccountingPointsService.POINT_COSTS.image} 点`);
-        await AccountingPointsService.deductPoints(userId, 'image', AccountingPointsService.POINT_COSTS.image);
-      } catch (pointsError) {
-        logger.error('扣除记账点失败:', pointsError);
-        // 记账点扣除失败不影响返回结果，但需要记录日志
-      }
-    } else if (result.success && useCustomAI) {
-      logger.info(`✅ [图片识别] 使用自定义AI服务，免扣记账点`);
-    }
-
-    return result;
+    logger.info(`✅ [图片识别] 用户 ${userId} 使用图片识别功能`);
+    return await this.recognizeImage(request);
   }
 
   /**
-   * 图片识别（带记账点扣除）- 用于智能记账
+   * 图片识别 - 用于智能记账，直接调用原始方法，无需积分检查
    * @param request 图片识别请求
-   * @param userId 用户ID（用于记账点扣除）
+   * @param userId 用户ID
    */
   async recognizeImageWithPointsDeduction(request: VisionRecognitionRequest, userId: string): Promise<MultimodalAIResponse> {
-    // 检查是否使用自定义AI服务
-    const useCustomAI = await this.isUsingCustomAIService(userId);
-
-    // 检查记账点余额（图片智能记账总共需要3点：图片识别2点+智能记账1点）- 仅在记账点系统启用时检查，且非自定义AI
-    if (!useCustomAI && this.membershipService.isAccountingPointsEnabled()) {
-      const totalRequiredPoints = AccountingPointsService.POINT_COSTS.image + AccountingPointsService.POINT_COSTS.text;
-      const canUsePoints = await AccountingPointsService.canUsePoints(userId, totalRequiredPoints);
-      if (!canUsePoints) {
-        return {
-          success: false,
-          error: '记账点余额不足，请进行签到获取记账点或开通捐赠会员，每天登录App以及签到总计可获得10点赠送记账点。\n\n💡 小提示：您也可以在"设置 → AI服务管理"中配置自定义AI服务，使用自定义AI将不消耗记账点。',
-          usage: { duration: 0 },
-        };
-      }
-    }
-
-    // 调用原始的图片识别方法
-    const result = await this.recognizeImage(request);
-
-    // 如果识别成功，扣除图片识别记账点（2点）- 仅在记账点系统启用时，且非自定义AI
-    if (result.success && !useCustomAI && this.membershipService.isAccountingPointsEnabled()) {
-      try {
-        logger.info(`📌 [图片识别] 使用官方AI服务，扣除记账点 ${AccountingPointsService.POINT_COSTS.image} 点`);
-        await AccountingPointsService.deductPoints(userId, 'image', AccountingPointsService.POINT_COSTS.image);
-      } catch (pointsError) {
-        logger.error('扣除记账点失败:', pointsError);
-        // 记账点扣除失败不影响返回结果，但需要记录日志
-      }
-    } else if (result.success && useCustomAI) {
-      logger.info(`✅ [图片识别] 使用自定义AI服务，免扣记账点`);
-    }
-
-    return result;
+    logger.info(`✅ [图片识别] 用户 ${userId} 使用图片识别功能（智能记账）`);
+    return await this.recognizeImage(request);
   }
 
   /**

@@ -143,8 +143,7 @@ export class UserRepository {
       this.checkTableExists('multimodal_ai_call_logs'),
       this.checkTableExists('tags'),
       this.checkTableExists('daily_gift_records'),
-      this.checkTableExists('user_memberships'),
-      this.checkTableExists('user_badges'),
+            this.checkTableExists('user_badges'),
       this.checkTableExists('user_accounting_points'),
       this.checkTableExists('user_checkins'),
       this.checkTableExists('user_llm_settings'),
@@ -163,7 +162,6 @@ export class UserRepository {
       hasMultimodalAiCallLogs,
       hasTags,
       hasDailyGiftRecords,
-      hasUserMemberships,
       hasUserBadges,
       hasUserAccountingPoints,
       hasUserCheckins,
@@ -328,126 +326,119 @@ export class UserRepository {
         where: { user_id: userId },
       });
 
-      // 14. 删除用户会员信息（如果表存在）
-      if (hasUserMemberships) {
-        await tx.userMembership.deleteMany({
-          where: { userId },
-        });
-      }
-
-      // 15. 删除用户徽章（如果表存在）
+      // 14. 删除用户徽章（如果表存在）
       if (hasUserBadges) {
         await tx.userBadge.deleteMany({
           where: { userId },
         });
       }
 
-      // 16. 删除用户积分记录（如果表存在）
+      // 15. 删除用户积分记录（如果表存在）
       if (hasUserAccountingPoints) {
         await tx.userAccountingPoints.deleteMany({
           where: { userId },
         });
       }
 
-      // 17. 删除用户签到记录（如果表存在）
+      // 16. 删除用户签到记录（如果表存在）
       if (hasUserCheckins) {
         await tx.userCheckins.deleteMany({
           where: { userId },
         });
       }
 
-      // 18. 删除用户LLM设置（如果表存在）
+      // 17. 删除用户LLM设置（如果表存在）
       if (hasUserLlmSettings) {
         await tx.userLLMSetting.deleteMany({
           where: { userId },
         });
       }
 
-      // 19. 删除用户分类配置（如果表存在）
+      // 18. 删除用户分类配置（如果表存在）
       if (hasUserCategoryConfigs) {
         await tx.userCategoryConfig.deleteMany({
           where: { userId },
         });
       }
 
-      // 20. 删除用户支付订单（如果表存在）
+      // 19. 删除用户支付订单（如果表存在）
       if (hasPaymentOrders) {
         await tx.payment_orders.deleteMany({
           where: { user_id: userId },
         });
       }
 
-      // 21. 删除用户订阅（如果表存在）
+      // 20. 删除用户订阅（如果表存在）
       if (hasSubscriptions) {
         await tx.subscriptions.deleteMany({
           where: { user_id: userId },
         });
       }
 
-      // 22. 删除用户支付历史（如果表存在）
+      // 21. 删除用户支付历史（如果表存在）
       if (hasPaymentHistory) {
         await tx.payment_history.deleteMany({
           where: { user_id: userId },
         });
       }
 
-      // 23. 删除用户版本状态（如果表存在）
+      // 22. 删除用户版本状态（如果表存在）
       if (hasUserVersionStatus) {
         await tx.userVersionStatus.deleteMany({
           where: { userId },
         });
       }
 
-      // 24. 删除用户创建的应用版本（如果表存在）
+      // 23. 删除用户创建的应用版本（如果表存在）
       if (hasAppVersions) {
         await tx.appVersion.deleteMany({
           where: { createdBy: userId },
         });
       }
 
-      // 25. 删除用户版本检查日志（如果表存在）
+      // 24. 删除用户版本检查日志（如果表存在）
       if (hasVersionCheckLogs) {
         await tx.versionCheckLog.deleteMany({
           where: { userId },
         });
       }
 
-      // 26. 删除用户文件存储（如果表存在）
+      // 25. 删除用户文件存储（如果表存在）
       if (hasFileStorage) {
         await tx.fileStorage.deleteMany({
           where: { uploadedBy: userId },
         });
       }
 
-      // 27. 删除用户LLM调用日志（如果表存在）
+      // 26. 删除用户LLM调用日志（如果表存在）
       if (hasLlmCallLogs) {
         await tx.llmCallLog.deleteMany({
           where: { userId },
         });
       }
 
-      // 28. 删除用户多模态AI调用日志（如果表存在）
+      // 27. 删除用户多模态AI调用日志（如果表存在）
       if (hasMultimodalAiCallLogs) {
         await tx.multimodalAiCallLog.deleteMany({
           where: { userId },
         });
       }
 
-      // 29. 删除用户标签（如果表存在）
+      // 28. 删除用户标签（如果表存在）
       if (hasTags) {
         await tx.tag.deleteMany({
           where: { createdBy: userId },
         });
       }
 
-      // 30. 删除用户每日礼品记录（如果表存在）
+      // 29. 删除用户每日礼品记录（如果表存在）
       if (hasDailyGiftRecords) {
         await tx.dailyGiftRecords.deleteMany({
           where: { userId },
         });
       }
 
-      // 31. 处理用户创建的家庭
+      // 30. 处理用户创建的家庭
       const userFamilies = await tx.family.findMany({
         where: { createdBy: userId },
       });
@@ -476,12 +467,12 @@ export class UserRepository {
         }
       }
 
-      // 32. 删除用户的家庭成员记录
+      // 31. 删除用户的家庭成员记录
       await tx.familyMember.deleteMany({
         where: { userId },
       });
 
-      // 33. 最后删除用户账户
+      // 32. 最后删除用户账户
       await tx.user.delete({
         where: { id: userId },
       });

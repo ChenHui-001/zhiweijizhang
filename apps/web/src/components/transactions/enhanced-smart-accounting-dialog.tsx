@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
 import { refreshDashboardCache } from '@/lib/query-cache-utils';
-import { useAccountingPointsStore } from '@/store/accounting-points-store';
 import { useSystemConfig } from '@/hooks/useSystemConfig';
 import {
   detectPlatform,
@@ -103,8 +102,6 @@ export default function EnhancedSmartAccountingDialog({
   accountBookId,
 }: EnhancedSmartAccountingDialogProps) {
   const router = useRouter();
-  // 使用新的缓存刷新机制
-  const { balance, fetchBalance } = useAccountingPointsStore();
   const { config, loading: configLoading } = useSystemConfig();
   const { showSelectionModal: showGlobalSelectionModal } = useTransactionSelectionStore();
 
@@ -307,36 +304,8 @@ export default function EnhancedSmartAccountingDialog({
     setAudioLevel(0);
   };
 
-  // 记账点检查工具函数
+  // 记账点检查工具函数 - 始终返回true（记账点系统已停用）
   const checkAccountingPoints = (type: 'text' | 'voice' | 'image'): boolean => {
-    // 如果配置正在加载，不允许操作
-    if (configLoading) {
-      showError('系统配置加载中，请稍候重试');
-      return false;
-    }
-
-    // 如果记账点系统未启用，直接允许使用
-    if (!config.accountingPointsEnabled) {
-      return true;
-    }
-
-    if (!balance) {
-      showError('记账点余额获取失败，请刷新页面重试');
-      return false;
-    }
-
-    const pointCosts = { text: 1, voice: 2, image: 3 };
-    const required = pointCosts[type];
-    const totalBalance = balance.totalBalance;
-
-    if (totalBalance < required) {
-      const typeNames = { text: '文字记账', voice: '语音记账', image: '图片记账' };
-      showError(
-        `记账点余额不足，${typeNames[type]}需要${required}点，当前余额${totalBalance}点。请进行签到获取记账点或开通捐赠会员。`,
-      );
-      return false;
-    }
-
     return true;
   };
 
@@ -359,11 +328,7 @@ export default function EnhancedSmartAccountingDialog({
       return additionalConditions; // 如果记账点系统未启用，只检查其他条件
     }
 
-    const pointCosts = { text: 1, voice: 2, image: 3 };
-    const required = pointCosts[type];
-    const hasInsufficientBalance = !balance || balance.totalBalance < required;
-
-    return additionalConditions || hasInsufficientBalance;
+    return additionalConditions;
   };
 
   // 获取按钮的提示文本
@@ -376,19 +341,6 @@ export default function EnhancedSmartAccountingDialog({
     // 如果没有账本ID
     if (!accountBookId) {
       return '请先选择账本';
-    }
-
-    if (!config.accountingPointsEnabled) {
-      return ''; // 如果记账点系统未启用，不显示余额相关提示
-    }
-
-    const pointCosts = { text: 1, voice: 2, image: 3 };
-    const required = pointCosts[type];
-    const hasInsufficientBalance = !balance || balance.totalBalance < required;
-
-    if (hasInsufficientBalance) {
-      const typeNames = { text: '文字记账', voice: '语音记账', image: '图片记账' };
-      return `记账点余额不足，${typeNames[type]}需要${required}点`;
     }
 
     return '';
@@ -1126,8 +1078,7 @@ export default function EnhancedSmartAccountingDialog({
                 try {
                   refreshDashboardCache(accountBookId);
                   // 刷新记账点余额
-                  await fetchBalance();
-                } catch (refreshError) {
+                                  } catch (refreshError) {
                   console.error('刷新仪表盘数据失败:', refreshError);
                 }
               }
@@ -1532,8 +1483,7 @@ export default function EnhancedSmartAccountingDialog({
                     // 刷新仪表盘数据和记账点余额
                     try {
                       refreshDashboardCache(accountBookId);
-                      await fetchBalance();
-                    } catch (refreshError) {
+                                          } catch (refreshError) {
                       console.error('刷新数据失败:', refreshError);
                     }
                   } else {
@@ -1568,8 +1518,7 @@ export default function EnhancedSmartAccountingDialog({
                     // 刷新仪表盘数据和记账点余额
                     try {
                       refreshDashboardCache(accountBookId);
-                      await fetchBalance();
-                    } catch (refreshError) {
+                                          } catch (refreshError) {
                       console.error('刷新数据失败:', refreshError);
                     }
                   } else {
@@ -1589,8 +1538,7 @@ export default function EnhancedSmartAccountingDialog({
               try {
                 refreshDashboardCache(accountBookId);
                 // 刷新记账点余额
-                await fetchBalance();
-              } catch (refreshError) {
+                              } catch (refreshError) {
                 console.error('刷新仪表盘数据失败:', refreshError);
               }
             }
@@ -1714,8 +1662,7 @@ export default function EnhancedSmartAccountingDialog({
                     // 刷新仪表盘数据和记账点余额
                     try {
                       refreshDashboardCache(accountBookId);
-                      await fetchBalance();
-                    } catch (refreshError) {
+                                          } catch (refreshError) {
                       console.error('刷新数据失败:', refreshError);
                     }
                   } else {
@@ -1750,8 +1697,7 @@ export default function EnhancedSmartAccountingDialog({
                     // 刷新仪表盘数据和记账点余额
                     try {
                       refreshDashboardCache(accountBookId);
-                      await fetchBalance();
-                    } catch (refreshError) {
+                                          } catch (refreshError) {
                       console.error('刷新数据失败:', refreshError);
                     }
                   } else {
@@ -1771,8 +1717,7 @@ export default function EnhancedSmartAccountingDialog({
               try {
                 refreshDashboardCache(accountBookId);
                 // 刷新记账点余额
-                await fetchBalance();
-              } catch (refreshError) {
+                              } catch (refreshError) {
                 console.error('刷新仪表盘数据失败:', refreshError);
               }
             }
@@ -1865,8 +1810,7 @@ export default function EnhancedSmartAccountingDialog({
                     // 刷新仪表盘数据和记账点余额
                     try {
                       refreshDashboardCache(accountBookId);
-                      await fetchBalance();
-                    } catch (refreshError) {
+                                          } catch (refreshError) {
                       console.error('刷新数据失败:', refreshError);
                     }
                   } else {
@@ -1881,13 +1825,6 @@ export default function EnhancedSmartAccountingDialog({
           // 正常的单条记录处理
           sessionStorage.setItem('smartAccountingResult', JSON.stringify(response));
           progressManager.showProgress(progressId, '图片智能识别成功', 'success');
-
-          // 刷新记账点余额
-          try {
-            await fetchBalance();
-          } catch (balanceError) {
-            console.error('刷新记账点余额失败:', balanceError);
-          }
 
           router.push('/transactions/new');
         } else {
@@ -1934,8 +1871,7 @@ export default function EnhancedSmartAccountingDialog({
                   // 刷新仪表盘数据和记账点余额
                   try {
                     refreshDashboardCache(accountBookId);
-                    await fetchBalance();
-                  } catch (refreshError) {
+                                      } catch (refreshError) {
                     console.error('刷新数据失败:', refreshError);
                   }
                 } else {
@@ -1950,13 +1886,6 @@ export default function EnhancedSmartAccountingDialog({
         // 正常的单条记录处理
         sessionStorage.setItem('smartAccountingResult', JSON.stringify(response));
         showSuccess('智能识别成功');
-
-        // 刷新记账点余额
-        try {
-          await fetchBalance();
-        } catch (balanceError) {
-          console.error('刷新记账点余额失败:', balanceError);
-        }
 
         onClose();
         router.push('/transactions/new');
@@ -2053,8 +1982,7 @@ export default function EnhancedSmartAccountingDialog({
           try {
             refreshDashboardCache(accountBookId);
             // 刷新记账点余额
-            await fetchBalance();
-          } catch (refreshError) {
+                      } catch (refreshError) {
             console.error('刷新仪表盘数据失败:', refreshError);
           }
         }
@@ -2125,7 +2053,6 @@ export default function EnhancedSmartAccountingDialog({
         accountBookId,
         configLoading,
         config,
-        balance,
       });
 
       // 初始化多模态状态
@@ -2138,19 +2065,6 @@ export default function EnhancedSmartAccountingDialog({
       // 检查是否有分享图片数据
       const shareImageDataStr = sessionStorage.getItem('shareImageData');
       const hasShareImageData = shareImageDataStr && JSON.parse(shareImageDataStr).type === 'share-image';
-
-      // 如果记账点系统启用，获取记账点余额
-      if (config.accountingPointsEnabled) {
-        fetchBalance()
-          .then(() => {
-            console.log('✅ 记账点余额获取完成');
-          })
-          .catch((error) => {
-            console.error('❌ 记账点余额获取失败:', error);
-          });
-      } else {
-        console.log('💰 记账点系统未启用，跳过余额获取');
-      }
 
       // 重置所有状态（快捷指令模式和分享图片模式下保留某些状态）
       if (!hasShortcutData && !hasShareImageData) {
@@ -2277,26 +2191,6 @@ export default function EnhancedSmartAccountingDialog({
       }
     };
   }, [isOpen, recordingState, configLoading, config.accountingPointsEnabled]);
-
-  // 专门处理记账点余额获取
-  useEffect(() => {
-    console.log('🔍 余额获取useEffect触发:', {
-      isOpen,
-      configLoading,
-      accountingPointsEnabled: config.accountingPointsEnabled,
-    });
-
-    if (isOpen && !configLoading && config.accountingPointsEnabled) {
-      console.log('🔄 配置加载完成，开始获取记账点余额');
-      fetchBalance()
-        .then(() => {
-          console.log('✅ 记账点余额获取成功');
-        })
-        .catch((error) => {
-          console.error('❌ 记账点余额获取失败:', error);
-        });
-    }
-  }, [isOpen, configLoading, config.accountingPointsEnabled, fetchBalance]);
 
   if (!isOpen) return null;
 

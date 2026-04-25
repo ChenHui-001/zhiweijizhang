@@ -31,12 +31,12 @@ export function useSystemConfig() {
     configLogger.error('系统配置加载失败', error);
   }
 
-  return { 
+  return {
     config: config || {
       membershipEnabled: false,
       accountingPointsEnabled: false,
-    }, 
-    loading, 
-    error 
+    },
+    loading,
+    error
   };
 }

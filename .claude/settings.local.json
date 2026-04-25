@@ -15,7 +15,8 @@
       "Bash(docker --version)",
       "Bash(docker info *)",
       "Bash(./scripts/build-and-push.sh *)",
-      "Bash(docker login *)"
+      "Bash(docker login *)",
+      "Bash(git commit *)"
     ]
   }
 }

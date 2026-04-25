@@ -10,8 +10,6 @@ import tokenLimitAdminRoutes from './token-limit.admin.routes';
 import multiProviderLLMAdminRoutes from './multi-provider-llm.admin.routes';
 import storageConfigAdminRoutes from './storage-config.admin.routes';
 import multimodalAIAdminRoutes from './multimodal-ai.admin.routes';
-import accountingPointsAdminRoutes from './accounting-points.admin.routes';
-import membershipAdminRoutes from './membership.admin.routes';
 import versionAdminRoutes from './version.admin.routes';
 import scheduledTaskAdminRoutes from './scheduled-task.admin.routes';
 
@@ -29,8 +27,6 @@ router.use('/token-limit', tokenLimitAdminRoutes);
 router.use('/multi-provider-llm', multiProviderLLMAdminRoutes);
 router.use('/storage', storageConfigAdminRoutes);
 router.use('/multimodal-ai', multimodalAIAdminRoutes);
-router.use('/accounting-points', accountingPointsAdminRoutes);
-router.use('/membership', membershipAdminRoutes);
 router.use('/version', versionAdminRoutes);
 router.use('/scheduled-tasks', scheduledTaskAdminRoutes);
 

@@ -51,8 +51,8 @@ export function useSystemFeatures() {
     retryDelay: 1000,
     // 默认值，避免loading状态
     placeholderData: {
-      membershipEnabled: true,
-      accountingPointsEnabled: true,
+      membershipEnabled: false,
+      accountingPointsEnabled: false,
     },
   });
 }

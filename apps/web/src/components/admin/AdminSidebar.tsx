@@ -33,7 +33,6 @@ const navigation = [
     children: [
       { name: '用户列表', href: '/admin/users', current: false },
       { name: '记账点管理', href: '/admin/accounting-points', current: false },
-      { name: '会员管理', href: '/admin/membership', current: false },
     ],
   },
   {
@@ -65,9 +64,6 @@ export function AdminSidebar({ isOpen, onClose, isMobile }: AdminSidebarProps) {
         // 过滤用户管理子菜单
         const filteredChildren = item.children.filter((child) => {
           if (child.name === '记账点管理' && !config.accountingPointsEnabled) {
-            return false;
-          }
-          if (child.name === '会员管理' && !config.membershipEnabled) {
             return false;
           }
           return true;

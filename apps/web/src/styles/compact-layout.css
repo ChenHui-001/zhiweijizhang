@@ -1264,47 +1264,6 @@
   font-size: var(--font-size-small) !important;
 }
 
-/* 会员中心页面紧凑化 */
-.layout-compact .membership-page .membership-card {
-  padding: 16px !important;
-  margin-bottom: 12px !important;
-}
-
-.layout-compact .membership-page .membership-header {
-  margin-bottom: 10px !important;
-}
-
-.layout-compact .membership-page .membership-title {
-  font-size: var(--font-size-title) !important;
-}
-
-.layout-compact .membership-page .membership-status {
-  font-size: var(--font-size-body) !important;
-}
-
-.layout-compact .membership-page .membership-features {
-  gap: 6px !important;
-  margin-top: 10px !important;
-}
-
-.layout-compact .membership-page .feature-item {
-  padding: 6px 0 !important;
-}
-
-.layout-compact .membership-page .feature-text {
-  font-size: var(--font-size-small) !important;
-}
-
-.layout-compact .membership-page .membership-actions {
-  gap: 8px !important;
-  margin-top: 12px !important;
-}
-
-.layout-compact .membership-page .membership-button {
-  padding: 8px 16px !important;
-  font-size: var(--font-size-body) !important;
-}
-
 /* 个人资料页面紧凑化 */
 .layout-compact .profile-page .profile-section {
   margin-bottom: 16px !important;
@@ -1718,11 +1677,6 @@
   .layout-compact .shortcuts-page .shortcut-item {
     padding: 14px !important;
     margin-bottom: 10px !important;
-  }
-
-  .layout-compact .membership-page .membership-card {
-    padding: 18px !important;
-    margin-bottom: 14px !important;
   }
 
   .layout-compact .profile-page .profile-avatar {
