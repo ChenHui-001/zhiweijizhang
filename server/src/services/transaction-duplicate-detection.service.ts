@@ -90,8 +90,8 @@ export class TransactionDuplicateDetectionService {
     timeWindowDays: number = 7
   ): Promise<DuplicateDetectionResult> {
     try {
-      // 计算时间窗口
-      const recordDate = new Date(record.date);
+      // 计算时间窗口（兼容Date和字符串类型）
+      const recordDate = record.date instanceof Date ? record.date : new Date(record.date);
       const startDate = new Date(recordDate);
       startDate.setDate(startDate.getDate() - timeWindowDays);
       const endDate = new Date(recordDate);

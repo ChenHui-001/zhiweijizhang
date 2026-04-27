@@ -23,7 +23,6 @@ export default function AIServicesPage() {
     isLoadingUserAI,
     fetchUserAIEnabled,
     toggleUserAIService,
-    switchServiceType,
     globalConfig,
     fetchGlobalConfig,
   } = useGlobalAIStore();
@@ -35,7 +34,6 @@ export default function AIServicesPage() {
     deleteService,
   } = useAIServicesStore();
 
-  const [selectedServiceType, setSelectedServiceType] = useState<'official' | 'custom'>('custom');
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // 获取当前激活的服务名称
@@ -60,34 +58,11 @@ export default function AIServicesPage() {
     }
   }, [isAuthenticated, fetchUserAIEnabled, fetchServices, fetchGlobalConfig]);
 
-  useEffect(() => {
-    if (globalConfig?.serviceType) {
-      setSelectedServiceType(globalConfig.serviceType as 'official' | 'custom');
-    }
-  }, [globalConfig?.serviceType]);
-
   const handleGlobalAIToggle = async (enabled: boolean) => {
     try {
       await toggleUserAIService(enabled);
     } catch (error) {
       console.error('切换用户AI服务状态失败:', error);
-    }
-  };
-
-  const handleServiceTypeChange = async (type: 'official' | 'custom') => {
-    try {
-      setSelectedServiceType(type);
-      if (type === 'custom' && services.length > 0) {
-        await switchServiceType('custom', services[0].id);
-      } else if (type === 'custom') {
-        await switchServiceType('custom', '');
-      } else {
-        await switchServiceType('official');
-      }
-      toast.success(`已切换到${type === 'official' ? '官方AI' : '自定义AI'}`);
-    } catch (error) {
-      console.error('切换服务类型失败:', error);
-      toast.error('切换失败');
     }
   };
 
@@ -98,10 +73,6 @@ export default function AIServicesPage() {
     try {
       await deleteService(id);
       toast.success('删除成功');
-      if (selectedServiceType === 'custom' && services.length === 0) {
-        setSelectedServiceType('official');
-        await switchServiceType('official');
-      }
     } catch (error) {
       console.error('删除服务失败:', error);
       toast.error('删除失败');
@@ -166,18 +137,8 @@ export default function AIServicesPage() {
         </div>
       </div>
 
-      {/* AI服务类型切换 */}
+      {/* 自定义AI服务 */}
       {userAIEnabled && (
-        <div className={styles.globalAISwitch}>
-          <h3 style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)', margin: '0 0 16px 0' }}>自定义AI服务</h3>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 16px 0' }}>
-            配置您的自定义API服务，享受免费的智能记账功能
-          </p>
-        </div>
-      )}
-
-      {/* 自定义AI服务列表 */}
-      {userAIEnabled && selectedServiceType === 'custom' && (
         <div className={styles.globalAISwitch}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
             <h3 style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)', margin: 0 }}>自定义AI服务</h3>
@@ -185,6 +146,10 @@ export default function AIServicesPage() {
               <i className="fas fa-plus"></i> 添加服务
             </Link>
           </div>
+
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 16px 0' }}>
+            配置您的自定义API服务，享受免费的智能记账功能
+          </p>
 
           {servicesLoading ? (
             <div className={styles.loadingContainer}>
@@ -242,18 +207,15 @@ export default function AIServicesPage() {
         </div>
       )}
 
-      {/* 官方AI提示 */}
-      {userAIEnabled && (
+      {/* 推荐提示 */}
+      {userAIEnabled && services.length === 0 && (
         <div className={styles.globalAISwitch} style={{ backgroundColor: 'rgba(59, 130, 246, 0.05)', borderColor: 'rgba(59, 130, 246, 0.2)' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
             <i className="fas fa-info-circle" style={{ fontSize: '20px', color: 'var(--primary-color)', marginTop: '2px' }}></i>
             <div>
-              <h4 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)', margin: '0 0 8px 0' }}>使用自定义AI服务</h4>
+              <h4 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)', margin: '0 0 8px 0' }}>推荐的AI提供商</h4>
               <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>
-                自定义AI服务让您可以使用自己的API密钥，完全免费使用智能记账功能。
-              </p>
-              <p style={{ marginTop: '12px', fontSize: '13px', color: 'var(--primary-color)' }}>
-                💡 推荐使用硅基流动等国内AI提供商，性价比高且稳定
+                推荐使用硅基流动、DeepSeek等国内AI提供商，性价比高且稳定
               </p>
             </div>
           </div>

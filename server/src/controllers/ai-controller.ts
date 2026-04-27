@@ -138,7 +138,7 @@ export class AIController {
       }
 
       // 处理描述（带超时控制）
-      const SMART_ACCOUNTING_TIMEOUT = 50000; // 40秒超时
+      const SMART_ACCOUNTING_TIMEOUT = 50000; // 50秒超时
       let result: SmartAccountingResponse | null = null;
       let lastError: Error | null = null;
       try {
@@ -204,12 +204,12 @@ export class AIController {
       // 检查是否有日期异常需要用户修正
       const hasDateAnomalies = this.dateCorrectionMiddleware.hasDateAnomalies(recordsWithDateValidation);
       
-      logger.info(`📅 [日期校验] 记录数: ${recordsWithDateValidation.length}, 有异常: ${hasDateAnomalies}`);
+      logger.info(`[日期校验] 记录数: ${recordsWithDateValidation.length}, 有异常: ${hasDateAnomalies}`);
 
       // 检查是否来自图片识别且有多条记录
       if (isFromImageRecognition && recordsToCheck.length > 1) {
         // 来自图片识别且有多条记录，进行重复检测并返回记录列表供用户选择
-        logger.info(`📝 [智能记账] 检测到来自图片识别的${recordsToCheck.length}条记录，进行重复检测`);
+        logger.info(`[智能记账] 检测到来自图片识别的${recordsToCheck.length}条记录，进行重复检测`);
 
         try {
           // 进行重复检测
@@ -261,7 +261,7 @@ export class AIController {
 
       // 如果有日期异常且不是多条记录选择流程，返回日期修正提示
       if (hasDateAnomalies && !isFromImageRecognition) {
-        logger.info(`⚠️ [日期校验] 检测到日期异常，返回修正提示`);
+        logger.info(`[日期校验] 检测到日期异常，返回修正提示`);
         return res.json({
           requiresDateCorrection: true,
           records: recordsWithDateValidation,
@@ -361,17 +361,17 @@ export class AIController {
           if (imageFileInfo && imageFileInfo.id) {
             try {
               await this.linkImageToTransaction(transaction.id, imageFileInfo.id, userId);
-              logger.info(`✅ [选择记账] 第 ${i + 1} 条记账记录图片附件关联成功: ${transaction.id}`);
+              logger.info(`[选择记账] 第 ${i + 1} 条记账记录图片附件关联成功: ${transaction.id}`);
             } catch (attachmentError) {
-              logger.error(`⚠️ [选择记账] 第 ${i + 1} 条记账记录图片附件关联失败:`, attachmentError);
+              logger.error(`[选择记账] 第 ${i + 1} 条记账记录图片附件关联失败:`, attachmentError);
               // 附件关联失败不影响记账记录创建
             }
           }
 
           createdTransactions.push(transaction);
-          logger.info(`✅ [选择记账] 第 ${i + 1} 条记账记录创建成功: ${transaction.id}`);
+          logger.info(`[选择记账] 第 ${i + 1} 条记账记录创建成功: ${transaction.id}`);
         } catch (error) {
-          logger.error(`❌ [选择记账] 第 ${i + 1} 条记账记录创建失败:`, error);
+          logger.error(`[选择记账] 第 ${i + 1} 条记账记录创建失败:`, error);
           errors.push({
             index: i,
             record: record,
@@ -1175,7 +1175,7 @@ export class AIController {
 
       // 如果提供了用户名称且是家庭账本，查找对应的家庭成员
       if (userName && accountBook.type === 'FAMILY' && accountBook.familyId) {
-        logger.info(`🔍 [用户识别] 查找家庭成员: ${userName}`);
+        logger.info(`[用户识别] 查找家庭成员: ${userName}`);
 
         // 查找家庭成员
         const familyMember = await prisma.familyMember.findFirst({
@@ -1198,9 +1198,9 @@ export class AIController {
         if (familyMember && familyMember.userId) {
           actualUserId = familyMember.userId;
           actualUserName = familyMember.user?.name || familyMember.name;
-          logger.info(`✅ [用户识别] 找到家庭成员: ${actualUserName} (ID: ${actualUserId})`);
+          logger.info(`[用户识别] 找到家庭成员: ${actualUserName} (ID: ${actualUserId})`);
         } else {
-          logger.info(`⚠️ [用户识别] 未找到家庭成员: ${userName}, 使用请求发起人`);
+          logger.info(`[用户识别] 未找到家庭成员: ${userName}, 使用请求发起人`);
           // 获取请求发起人的名称
           const requestUser = await prisma.user.findUnique({
             where: { id: requestUserId },
@@ -1217,10 +1217,10 @@ export class AIController {
         actualUserName = requestUser?.name || 'Unknown';
       }
 
-      logger.info(`📝 [记账处理] 实际记账用户: ${actualUserName} (ID: ${actualUserId})`);
+      logger.info(`[记账处理] 实际记账用户: ${actualUserName} (ID: ${actualUserId})`);
 
       // 使用实际用户ID进行智能记账分析（带超时控制）
-      const SMART_ACCOUNTING_TIMEOUT = 50000; // 40秒超时
+      const SMART_ACCOUNTING_TIMEOUT = 50000; // 50秒超时
       let smartResult: SmartAccountingResponse | null = null;
       let lastError: Error | null = null;
       try {
@@ -1271,7 +1271,7 @@ export class AIController {
         const isMultipleRecords = Array.isArray(smartResult);
         const recordsToCreate: SmartAccountingResult[] = isMultipleRecords ? (smartResult as SmartAccountingResult[]) : [smartResult as SmartAccountingResult];
 
-        logger.info(`📝 [记账处理] 检测到 ${recordsToCreate.length} 条记录需要创建`);
+        logger.info(`[记账处理] 检测到 ${recordsToCreate.length} 条记录需要创建`);
 
         // 日期校验和修正 - 微信端自动修正
         const recordsWithDateValidation = this.dateCorrectionMiddleware.processBatchRecords(
@@ -1283,7 +1283,7 @@ export class AIController {
         // 检查是否有日期异常（微信端会自动修正，但需要记录日志）
         const hasDateAnomalies = this.dateCorrectionMiddleware.hasDateAnomalies(recordsWithDateValidation);
         
-        logger.info(`📅 [日期校验-微信记账] 记录数: ${recordsWithDateValidation.length}, 有异常: ${hasDateAnomalies}`);
+        logger.info(`[日期校验-微信记账] 记录数: ${recordsWithDateValidation.length}, 有异常: ${hasDateAnomalies}`);
 
         const createdTransactions: any[] = [];
         const now = new Date();
@@ -1301,10 +1301,10 @@ export class AIController {
 
           if (familyMember) {
             familyMemberId = familyMember.id;
-            logger.info(`👨‍👩‍👧‍👦 [家庭成员] 设置家庭成员ID: ${familyMemberId}`);
+            logger.info(`[家庭成员] 设置家庭成员ID: ${familyMemberId}`);
           } else {
             logger.info(
-              `⚠️ [家庭成员] 用户 ${actualUserId} 不是家庭 ${accountBook.familyId} 的成员`,
+              `[家庭成员] 用户 ${actualUserId} 不是家庭 ${accountBook.familyId} 的成员`,
             );
           }
         }
@@ -1352,7 +1352,7 @@ export class AIController {
             budgetId: record.budgetId || undefined,
           };
 
-          logger.info(`💾 [记账创建] 创建第 ${i + 1} 条记账记录:`, {
+          logger.info(`[记账创建] 创建第 ${i + 1} 条记账记录:`, {
             amount: transactionData.amount,
             userId: actualUserId,
             accountBookId: transactionData.accountBookId,
@@ -1363,7 +1363,7 @@ export class AIController {
           const transaction = await this.transactionService.createTransaction(actualUserId, transactionData);
           createdTransactions.push(transaction);
 
-          logger.info(`✅ [记账创建] 第 ${i + 1} 条记账记录创建成功: ${transaction.id}`);
+          logger.info(`[记账创建] 第 ${i + 1} 条记账记录创建成功: ${transaction.id}`);
         }
 
         // 准备返回结果，如果有日期异常需要添加警告信息
@@ -1387,7 +1387,7 @@ export class AIController {
         if (hasDateAnomalies) {
           const warningMessage = this.generateDateWarningMessage(recordsWithDateValidation);
           responseData.dateWarning = warningMessage;
-          logger.info(`⚠️ [日期警告-微信记账] ${warningMessage}`);
+          logger.info(`[日期警告-微信记账] ${warningMessage}`);
         }
 
         res.status(201).json(responseData);
@@ -1468,7 +1468,7 @@ export class AIController {
       }
 
       // 处理描述，获取智能记账结果（带超时控制）
-      const SMART_ACCOUNTING_TIMEOUT = 50000; // 40秒超时
+      const SMART_ACCOUNTING_TIMEOUT = 50000; // 50秒超时
       let result: SmartAccountingResponse | null = null;
       let lastError: Error | null = null;
       try {
@@ -1519,7 +1519,7 @@ export class AIController {
         const isMultipleRecords = Array.isArray(result);
         const recordsToCreate: SmartAccountingResult[] = isMultipleRecords ? (result as SmartAccountingResult[]) : [result as SmartAccountingResult];
 
-        logger.info(`📝 [记账处理] 检测到 ${recordsToCreate.length} 条记录需要创建`);
+        logger.info(`[记账处理] 检测到 ${recordsToCreate.length} 条记录需要创建`);
 
         // 日期校验和修正 - 直接记账也需要校验
         const recordsWithDateValidation = this.dateCorrectionMiddleware.processBatchRecords(
@@ -1531,11 +1531,11 @@ export class AIController {
         // 检查是否有日期异常需要用户修正
         const hasDateAnomalies = this.dateCorrectionMiddleware.hasDateAnomalies(recordsWithDateValidation);
         
-        logger.info(`📅 [日期校验-直接记账] 记录数: ${recordsWithDateValidation.length}, 有异常: ${hasDateAnomalies}`);
+        logger.info(`[日期校验-直接记账] 记录数: ${recordsWithDateValidation.length}, 有异常: ${hasDateAnomalies}`);
 
         // 如果有日期异常，返回修正提示（不直接创建）
         if (hasDateAnomalies) {
-          logger.info(`⚠️ [日期校验-直接记账] 检测到日期异常，返回修正提示`);
+          logger.info(`[日期校验-直接记账] 检测到日期异常，返回修正提示`);
           return res.json({
             requiresDateCorrection: true,
             records: recordsWithDateValidation,
@@ -1546,7 +1546,7 @@ export class AIController {
         // 检查是否来自图片识别且有多条记录
         if (isFromImageRecognition && recordsWithDateValidation.length > 1) {
           // 来自图片识别且有多条记录，进行重复检测并返回记录列表供用户选择
-          logger.info(`📝 [直接记账] 检测到来自图片识别的${recordsWithDateValidation.length}条记录，进行重复检测`);
+          logger.info(`[直接记账] 检测到来自图片识别的${recordsWithDateValidation.length}条记录，进行重复检测`);
 
           try {
             // 进行重复检测
@@ -1612,9 +1612,9 @@ export class AIController {
 
             if (fileInfo) {
               attachmentFileExists = true;
-              logger.info(`📎 [附件验证] 附件文件验证成功: ${attachmentFileId}`);
+              logger.info(`[附件验证] 附件文件验证成功: ${attachmentFileId}`);
             } else {
-              logger.warn(`⚠️ [附件验证] 文件不存在或无权访问: ${attachmentFileId}`);
+              logger.warn(`[附件验证] 文件不存在或无权访问: ${attachmentFileId}`);
             }
           } catch (error) {
             logger.error('验证附件文件失败:', error);
@@ -1743,7 +1743,7 @@ export class AIController {
               budgetId: smartResult.budgetId || null,
             };
 
-            logger.info(`💾 [记账创建] 创建第 ${i + 1} 条记账记录:`, {
+            logger.info(`[记账创建] 创建第 ${i + 1} 条记账记录:`, {
               amount: transactionData.amount,
               userId: transactionData.userId,
               accountBookId: transactionData.accountBookId,
@@ -1760,7 +1760,7 @@ export class AIController {
             // 如果有附件文件ID且文件存在，将其关联到创建的交易记录（为每条记录都添加附件）
             if (attachmentFileId && attachmentFileExists) {
               try {
-                logger.info(`📎 [附件关联] 正在为交易记录 ${transaction.id} 关联附件 ${attachmentFileId}`);
+                logger.info(`[附件关联] 正在为交易记录 ${transaction.id} 关联附件 ${attachmentFileId}`);
 
                 // 为每条记录创建附件关联（使用事务客户端tx）
                 await tx.transactionAttachment.create({
@@ -1772,14 +1772,14 @@ export class AIController {
                   },
                 });
 
-                logger.info(`✅ [附件关联] 交易记录 ${transaction.id} 附件关联成功`);
+                logger.info(`[附件关联] 交易记录 ${transaction.id} 附件关联成功`);
               } catch (attachmentError) {
                 logger.error(`关联附件失败 (交易记录 ${transaction.id}):`, attachmentError);
                 // 附件关联失败不影响记账创建的成功
               }
             }
 
-            logger.info(`✅ [记账创建] 第 ${i + 1} 条记账记录创建成功: ${transaction.id}`);
+            logger.info(`[记账创建] 第 ${i + 1} 条记账记录创建成功: ${transaction.id}`);
           }
         });
 
@@ -1820,18 +1820,18 @@ export class AIController {
    */
   private async checkAccountAccess(userId: string, accountId: string): Promise<boolean> {
     try {
-      logger.info('🔑 [权限检查] 开始检查账本访问权限:', { userId, accountId });
+      logger.info('[权限检查] 开始检查账本访问权限:', { userId, accountId });
 
       const accountBook = await prisma.accountBook.findUnique({
         where: { id: accountId },
       });
 
       if (!accountBook) {
-        logger.info('❌ [权限检查] 账本不存在');
+        logger.info('[权限检查] 账本不存在');
         return false;
       }
 
-      logger.info('📖 [权限检查] 账本信息:', {
+      logger.info('[权限检查] 账本信息:', {
         accountBookId: accountBook.id,
         accountBookUserId: accountBook.userId,
         accountBookType: accountBook.type,
@@ -1840,13 +1840,13 @@ export class AIController {
 
       // 检查是否是用户自己的账本
       if (accountBook.userId === userId) {
-        logger.info('✅ [权限检查] 用户是账本所有者，允许访问');
+        logger.info('[权限检查] 用户是账本所有者，允许访问');
         return true;
       }
 
       // 检查是否是家庭账本且用户是家庭成员
       if (accountBook.type === 'FAMILY' && accountBook.familyId) {
-        logger.info('👨‍👩‍👧‍👦 [权限检查] 检查家庭成员身份:', { familyId: accountBook.familyId });
+        logger.info('[权限检查] 检查家庭成员身份:', { familyId: accountBook.familyId });
 
         const familyMember = await prisma.familyMember.findFirst({
           where: {
@@ -1856,7 +1856,7 @@ export class AIController {
         });
 
         const isFamilyMember = !!familyMember;
-        logger.info('👨‍👩‍👧‍👦 [权限检查] 家庭成员检查结果:', {
+        logger.info('[权限检查] 家庭成员检查结果:', {
           isFamilyMember,
           familyMemberId: familyMember?.id,
         });
@@ -1864,10 +1864,10 @@ export class AIController {
         return isFamilyMember;
       }
 
-      logger.info('❌ [权限检查] 不是个人账本也不是家庭成员，拒绝访问');
+      logger.info('[权限检查] 不是个人账本也不是家庭成员，拒绝访问');
       return false;
     } catch (error) {
-      logger.error('❌ [权限检查] 检查账本访问权限错误:', error);
+      logger.error('[权限检查] 检查账本访问权限错误:', error);
       return false;
     }
   }
@@ -1882,23 +1882,23 @@ export class AIController {
       const userId = req.user?.id;
       const { accountId } = req.params;
 
-      logger.info('🔍 [AI服务] 获取账本激活AI服务:', { userId, accountId });
+      logger.info('[AI服务] 获取账本激活AI服务:', { userId, accountId });
 
       if (!userId) {
-        logger.info('❌ [AI服务] 用户未授权');
+        logger.info('[AI服务] 用户未授权');
         return res.status(401).json({ error: '未授权' });
       }
 
       // 检查用户是否有权限访问该账本
       const hasAccess = await this.checkAccountAccess(userId, accountId);
-      logger.info('🔑 [AI服务] 账本访问权限检查结果:', { hasAccess, userId, accountId });
+      logger.info('[AI服务] 账本访问权限检查结果:', { hasAccess, userId, accountId });
 
       if (!hasAccess) {
-        logger.info('❌ [AI服务] 用户无权访问该账本');
+        logger.info('[AI服务] 用户无权访问该账本');
         return res.status(403).json({ error: '无权访问该账本' });
       }
 
-      // 🔥 强制使用自定义AI服务，跳过官方AI检查
+      // 强制使用自定义AI服务，跳过官方AI检查
 
       // 如果提供了账本信息，优先使用账本绑定的UserLLMSetting
       try {
@@ -1921,12 +1921,12 @@ export class AIController {
               name: accountBook.userLLMSetting.name,
               description: accountBook.userLLMSetting.description,
             };
-            logger.info('✅ [AI服务] 返回账本绑定的自定义服务信息:', result);
+            logger.info('[AI服务] 返回账本绑定的自定义服务信息:', result);
             return res.json(result);
           }
         }
       } catch (error) {
-        logger.error('❌ [AI服务] 获取账本LLM设置失败:', error);
+        logger.error('[AI服务] 获取账本LLM设置失败:', error);
       }
 
       // 如果没有账本绑定，使用用户的默认LLM设置
@@ -1934,7 +1934,7 @@ export class AIController {
         const userLLMSetting = await this.getUserDefaultLLMSetting(userId);
 
         if (!userLLMSetting) {
-          logger.info('❌ [AI服务] 用户没有默认的自定义LLM设置');
+          logger.info('[AI服务] 用户没有默认的自定义LLM设置');
           const result = {
             enabled: false,
             type: null,
@@ -1955,10 +1955,10 @@ export class AIController {
           description: userLLMSetting.description,
         };
 
-        logger.info('✅ [AI服务] 返回用户自定义服务信息:', result);
+        logger.info('[AI服务] 返回用户自定义服务信息:', result);
         return res.json(result);
       } catch (error) {
-        logger.error('❌ [AI服务] 获取用户自定义LLM设置失败:', error);
+        logger.error('[AI服务] 获取用户自定义LLM设置失败:', error);
         const result = {
           enabled: false,
           type: null,
@@ -2319,7 +2319,7 @@ export class AIController {
         return;
       }
 
-      logger.info(`🤖 [Android截图记账] 开始处理:`, {
+      logger.info(`[Android截图记账] 开始处理:`, {
         userId,
         accountBookId,
         fileName: req.file.originalname,
@@ -2358,7 +2358,7 @@ export class AIController {
         }
 
         targetAccountBookId = defaultAccountBook.id;
-        logger.info(`🤖 [Android截图记账] 使用默认账本: ${targetAccountBookId}`);
+        logger.info(`[Android截图记账] 使用默认账本: ${targetAccountBookId}`);
       }
 
       // 验证账本权限
@@ -2419,7 +2419,7 @@ export class AIController {
       await multimodalController.smartAccountingVision(mockReq, mockRes);
 
       if (statusCode === 200 && visionResult?.success) {
-        logger.info(`🤖 [Android截图记账] 处理成功:`, {
+        logger.info(`[Android截图记账] 处理成功:`, {
           transactionId: visionResult.data?.id,
           text: visionResult.data?.text?.substring(0, 100) + '...'
         });
@@ -2435,7 +2435,7 @@ export class AIController {
           }
         });
       } else {
-        logger.error(`🤖 [Android截图记账] 处理失败:`, visionResult);
+        logger.error(`[Android截图记账] 处理失败:`, visionResult);
         res.status(statusCode || 400).json({
           success: false,
           error: '图片识别失败',
@@ -2444,7 +2444,7 @@ export class AIController {
       }
 
     } catch (error) {
-      logger.error('🤖 [Android截图记账] 处理失败:', error);
+      logger.error('[Android截图记账] 处理失败:', error);
       res.status(500).json({
         success: false,
         error: 'Android截图记账处理失败',
@@ -2553,7 +2553,7 @@ export class AIController {
         return;
       }
 
-      logger.info(`🚀 [快捷指令图片记账] 开始处理:`, {
+      logger.info(`[快捷指令图片记账] 开始处理:`, {
         userId,
         accountBookId,
         imageUrl: imageUrl.substring(0, 100) + '...'
@@ -2587,7 +2587,7 @@ export class AIController {
       let imageBuffer: Buffer;
 
       if (imageUrl.includes('/api/image-proxy/s3/')) {
-        logger.info('🔄 [快捷指令图片记账] 检测到代理URL，直接从S3下载');
+        logger.info('[快捷指令图片记账] 检测到代理URL，直接从S3下载');
 
         // 解析代理URL，提取bucket和key
         const urlParts = imageUrl.split('/api/image-proxy/s3/')[1];
@@ -2595,7 +2595,7 @@ export class AIController {
         const bucket = pathParts[0];
         const key = pathParts.slice(1).join('/');
 
-        logger.info('🔄 [快捷指令图片记账] S3参数:', { bucket, key });
+        logger.info('[快捷指令图片记账] S3参数:', { bucket, key });
 
         // 直接从S3下载 - 使用单例实例
         const { FileStorageService } = await import('../services/file-storage.service');
@@ -2603,7 +2603,7 @@ export class AIController {
 
         // 确保存储服务已初始化
         if (!fileStorageService.isStorageAvailable()) {
-          logger.info('🔄 [快捷指令图片记账] 存储服务未初始化，尝试重新加载配置...');
+          logger.info('[快捷指令图片记账] 存储服务未初始化，尝试重新加载配置...');
           await fileStorageService.reloadConfig();
 
           // 等待一段时间让服务初始化完成
@@ -2613,7 +2613,7 @@ export class AIController {
         const s3Service = fileStorageService.getS3Service();
 
         if (!s3Service) {
-          logger.error('🔄 [快捷指令图片记账] S3服务仍然不可用');
+          logger.error('[快捷指令图片记账] S3服务仍然不可用');
           res.status(503).json({ error: 'S3存储服务不可用' });
           return;
         }
@@ -2627,15 +2627,15 @@ export class AIController {
           }
 
           imageBuffer = Buffer.concat(chunks);
-          logger.info('🔄 [快捷指令图片记账] S3下载成功，大小:', imageBuffer.length);
+          logger.info('[快捷指令图片记账] S3下载成功，大小:', imageBuffer.length);
         } catch (s3Error) {
-          logger.error('🔄 [快捷指令图片记账] S3下载失败:', s3Error);
+          logger.error('[快捷指令图片记账] S3下载失败:', s3Error);
           res.status(400).json({ error: '无法从S3下载图片' });
           return;
         }
       } else {
         // 普通URL，使用fetch下载
-        logger.info('🔄 [快捷指令图片记账] 普通URL，使用fetch下载');
+        logger.info('[快捷指令图片记账] 普通URL，使用fetch下载');
 
         // SSRF防护：验证URL安全性
         const urlValidation = this.validateUrlSafety(imageUrl);
@@ -2694,7 +2694,7 @@ export class AIController {
       }
 
     } catch (error) {
-      logger.error('🚀 [快捷指令图片记账] 处理失败:', error);
+      logger.error('[快捷指令图片记账] 处理失败:', error);
       res.status(500).json({
         error: '快捷指令图片记账处理失败',
         details: error instanceof Error ? error.message : '未知错误'
@@ -2725,7 +2725,7 @@ export class AIController {
       return `识别日期"${originalDate}"不在合理范围内，已自动修正为今天(${suggestedDate})`;
     });
 
-    return `⚠️ 日期修正提示:\n${warnings.join('\n')}`;
+    return `[日期修正提示]:\n${warnings.join('\n')}`;
   }
 
 }

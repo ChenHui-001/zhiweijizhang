@@ -16,7 +16,17 @@
       "Bash(docker info *)",
       "Bash(./scripts/build-and-push.sh *)",
       "Bash(docker login *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(bash ./scripts/build-and-push.sh)",
+      "Bash(docker build *)",
+      "Bash(docker push *)",
+      "Bash(npx ts-node -e ' *)",
+      "Bash(chmod +x *)",
+      "Bash(./build-all.sh all *)",
+      "Bash(docker/scripts/build/build-all.sh all *)",
+      "Bash(bash build-all.sh all)",
+      "Bash(powershell.exe *)",
+      "Bash(cmd.exe *)"
     ]
   }
 }

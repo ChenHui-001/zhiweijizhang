@@ -424,11 +424,17 @@ export class MultimodalAIController {
         return;
       }
 
-      // 1. 获取视觉识别配置（用于日志记录）
-      try {
-        visionConfig = await multimodalAIConfigService.getVisionConfig();
-      } catch (configError) {
-        logger.warn('获取视觉识别配置失败:', configError);
+      // 1. 获取完整多模态配置（一次查询，两次复用）
+      const config = await multimodalAIConfigService.getFullConfig();
+      visionConfig = config.vision;
+
+      // 检查视觉识别是否启用
+      if (!config.vision.enabled) {
+        res.status(400).json({
+          success: false,
+          error: '图片识别功能未启用',
+        });
+        return;
       }
 
       // 2. 先保存图片到S3（带压缩）- 保存到永久存储桶以备附件使用
@@ -477,8 +483,7 @@ export class MultimodalAIController {
         }
       }
 
-      // 2. 获取配置的提示词
-      const config = await multimodalAIConfigService.getFullConfig();
+      // 3. 获取配置的提示词（复用已获取的config）
       const imageAnalysisPrompt = config.smartAccounting.imageAnalysisPrompt ||
         config.smartAccounting.multimodalPrompt ||
         '分析图片中的记账信息，提取：1.微信/支付宝付款记录：金额、收款人、备注，并从收款人分析记账类别；2.订单截图（美团/淘宝/京东/外卖/抖音）：内容、金额、时间、收件人；3.发票/票据：内容、分类、金额、时间。返回JSON格式。';

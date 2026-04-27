@@ -21,6 +21,7 @@ import userAISmartAccountingService from '../services/user-ai-smart-accounting.s
 import NodeCache from 'node-cache';
 import prisma from '../config/database';
 import { getLocalDateString } from '../utils/date-helpers';
+import crypto from 'crypto';
 
 /**
  * 增强版智能记账服务
@@ -64,8 +65,8 @@ export class EnhancedSmartAccounting {
       return null;
     }
 
-    // 生成缓存键
-    const cacheKey = `enhanced:${userId}:${accountId}:${description}`;
+    // 生成缓存键（使用描述文本的哈希值避免过长）
+    const cacheKey = `enhanced:${userId}:${accountId}:${crypto.createHash('md5').update(description).digest('hex')}`;
 
     // 检查缓存
     const cachedResult = this.cache.get(cacheKey);
@@ -310,6 +311,14 @@ export class EnhancedSmartAccounting {
         return {
           ...state,
           transactions: transactions,
+          debugInfo: {
+            systemPrompt: systemPromptProcessed,
+            userPrompt,
+            llmResponse: response,
+            parsedResult,
+            isArrayFormat,
+            transactionCount: transactions.length,
+          },
         };
       }
 
@@ -488,6 +497,21 @@ export class EnhancedSmartAccounting {
 
       const budgets: string[] = [];
 
+      // 批量查询用户名称（修复N+1查询问题）
+      const budgetUserIds = [...new Set(activeBudgets
+        .filter(b => b.userId && !b.familyMemberId)
+        .map(b => b.userId)
+        .filter((id): id is string => id !== null))];
+
+      const usersMap = new Map<string, string>();
+      if (budgetUserIds.length > 0) {
+        const users = await prisma.user.findMany({
+          where: { id: { in: budgetUserIds } },
+          select: { id: true, name: true },
+        });
+        users.forEach(u => usersMap.set(u.id, u.name));
+      }
+
       for (const budget of activeBudgets) {
         let budgetDisplayName = budget.name;
 
@@ -497,13 +521,7 @@ export class EnhancedSmartAccounting {
           if (budget.familyMemberId && budget.familyMember) {
             budgetDisplayName = budget.familyMember.user?.name || budget.familyMember.name;
           } else if (budget.userId) {
-            const user = await prisma.user.findUnique({
-              where: { id: budget.userId },
-              select: { name: true },
-            });
-            if (user) {
-              budgetDisplayName = user.name;
-            }
+            budgetDisplayName = usersMap.get(budget.userId) || budget.name;
           }
         }
 
@@ -518,7 +536,36 @@ export class EnhancedSmartAccounting {
   }
 
   /**
-   * 匹配预算处理器
+   * 获取当前活跃的预算列表（用于内存匹配）
+   */
+  private async getActiveBudgetsForMatching(userId: string, accountId: string): Promise<any[]> {
+    try {
+      const accountBook = await prisma.accountBook.findUnique({
+        where: { id: accountId },
+        select: { familyId: true },
+      });
+      if (!accountBook) return [];
+
+      const currentDate = new Date();
+      return await prisma.budget.findMany({
+        where: {
+          OR: [
+            { accountBookId: accountId, startDate: { lte: currentDate }, endDate: { gte: currentDate } },
+            { userId: userId, startDate: { lte: currentDate }, endDate: { gte: currentDate } },
+            ...(accountBook.familyId
+              ? [{ familyId: accountBook.familyId, startDate: { lte: currentDate }, endDate: { gte: currentDate } }]
+              : []),
+          ],
+        },
+      });
+    } catch (error) {
+      logger.error('获取活跃预算失败:', error);
+      return [];
+    }
+  }
+
+  /**
+   * 匹配预算处理器 - 多优先级匹配
    */
   private async matchBudgetHandler(state: SmartAccountingState) {
     if (!state.transactions || state.transactions.length === 0) {
@@ -526,22 +573,64 @@ export class EnhancedSmartAccounting {
     }
 
     try {
+      // 获取当前活跃的预算
+      const activeBudgets = await this.getActiveBudgetsForMatching(state.userId, state.accountId || '');
+
       for (const transaction of state.transactions) {
         if (transaction.budgetId) {
           continue;
         }
 
-        if (transaction.budgetName) {
-          const budgets = await prisma.budget.findMany({
-            where: {
-              accountBookId: state.accountId,
-              name: { contains: transaction.budgetName },
-            },
-          });
+        let matchedBudget = null;
 
-          if (budgets.length > 0) {
-            transaction.budgetId = budgets[0].id;
+        // 1. LLM识别的预算名称匹配（优先级最高）
+        if (transaction.budgetName) {
+          matchedBudget = activeBudgets.find((b: any) =>
+            b.name.toLowerCase().includes(transaction.budgetName!.toLowerCase()) ||
+            transaction.budgetName!.toLowerCase().includes(b.name.toLowerCase())
+          );
+          if (matchedBudget) {
+            logger.info(`[预算匹配-增强] 根据预算名称匹配: ${matchedBudget.id}`);
+            transaction.budgetId = matchedBudget.id;
+            continue;
           }
+        }
+
+        // 2. 用户个人预算（排除托管成员）
+        matchedBudget = activeBudgets.find((b: any) =>
+          b.userId === state.userId &&
+          b.budgetType === 'PERSONAL' &&
+          !b.familyMemberId &&
+          (!b.categoryId || b.categoryId === transaction.categoryId)
+        );
+
+        if (matchedBudget) {
+          logger.info(`[预算匹配-增强] 匹配用户个人预算: ${matchedBudget.id}`);
+          transaction.budgetId = matchedBudget.id;
+          continue;
+        }
+
+        // 3. 账本分类预算
+        matchedBudget = activeBudgets.find((b: any) =>
+          b.accountBookId === state.accountId &&
+          b.categoryId === transaction.categoryId
+        );
+
+        if (matchedBudget) {
+          logger.info(`[预算匹配-增强] 匹配分类预算: ${matchedBudget.id}`);
+          transaction.budgetId = matchedBudget.id;
+          continue;
+        }
+
+        // 4. 账本通用预算（不限分类）
+        matchedBudget = activeBudgets.find((b: any) =>
+          b.accountBookId === state.accountId &&
+          !b.categoryId
+        );
+
+        if (matchedBudget) {
+          logger.info(`[预算匹配-增强] 匹配通用预算: ${matchedBudget.id}`);
+          transaction.budgetId = matchedBudget.id;
         }
       }
 
@@ -582,7 +671,7 @@ export class EnhancedSmartAccounting {
   }
 
   /**
-   * 生成结果处理器
+   * 生成结果处理器 - 支持多条记录
    */
   private async generateResultHandler(state: SmartAccountingState) {
     if (!state.transactions || state.transactions.length === 0) {
@@ -590,34 +679,84 @@ export class EnhancedSmartAccounting {
     }
 
     try {
-      const primaryTransaction = state.transactions[0];
+      // 获取账本信息
+      const accountBook = await prisma.accountBook.findUnique({
+        where: { id: state.accountId },
+      });
 
-      // 确保所有必填字段有值
-      const result: SmartAccountingResult = {
-        amount: primaryTransaction.amount,
-        date: primaryTransaction.date instanceof Date ? primaryTransaction.date : new Date(primaryTransaction.date),
-        categoryId: primaryTransaction.categoryId || '',
-        categoryName: primaryTransaction.categoryName || '',
-        type: primaryTransaction.type || 'EXPENSE',
-        note: primaryTransaction.note || '',
-        accountId: primaryTransaction.accountId || state.accountId || '',
-        accountName: primaryTransaction.accountName || '',
-        accountType: primaryTransaction.accountType || state.accountType || 'personal',
-        userId: primaryTransaction.userId || state.userId,
-        confidence: primaryTransaction.confidence || 0.9,
-        createdAt: new Date(),
-        originalDescription: state.description,
-      };
+      const isArrayFormat = state.transactions.length > 1;
+      const results: SmartAccountingResult[] = [];
 
-      if (primaryTransaction.budgetId) {
-        (result as any).budgetId = primaryTransaction.budgetId;
-        (result as any).budgetName = primaryTransaction.budgetName;
+      for (const transaction of state.transactions) {
+        // 获取分类信息
+        let category = null;
+        if (transaction.categoryId) {
+          category = await prisma.category.findUnique({
+            where: { id: transaction.categoryId },
+          });
+        }
+
+        // 获取预算信息
+        let budget = null;
+        let budgetOwnerName = null;
+        if (transaction.budgetId) {
+          budget = await prisma.budget.findUnique({
+            where: { id: transaction.budgetId },
+            include: {
+              user: { select: { name: true } },
+              familyMember: {
+                include: { user: { select: { name: true } } },
+              },
+            },
+          });
+
+          if (budget) {
+            if (budget.familyMemberId && budget.familyMember) {
+              budgetOwnerName = budget.familyMember.user?.name || budget.familyMember.name;
+            } else if (budget.userId && budget.user) {
+              budgetOwnerName = budget.user.name;
+            } else {
+              budgetOwnerName = budget.name;
+            }
+          }
+        }
+
+        const result: SmartAccountingResult = {
+          amount: transaction.amount,
+          date: transaction.date instanceof Date ? transaction.date : new Date(transaction.date),
+          categoryId: transaction.categoryId || '',
+          categoryName: category?.name || transaction.categoryName || '',
+          type: (category?.type || transaction.type || 'EXPENSE') as 'EXPENSE' | 'INCOME',
+          note: transaction.note || '',
+          accountId: transaction.accountId || state.accountId || '',
+          accountName: accountBook?.name || transaction.accountName || '',
+          accountType: (accountBook?.type?.toLowerCase() || transaction.accountType || state.accountType || 'personal') as 'personal' | 'family',
+          userId: state.userId || '',
+          confidence: transaction.confidence || 0.9,
+          createdAt: new Date(),
+          originalDescription: state.description,
+        };
+
+        if (transaction.budgetId) {
+          result.budgetId = transaction.budgetId;
+          result.budgetName = budget?.name;
+          if (budgetOwnerName) {
+            result.budgetOwnerName = budgetOwnerName;
+          }
+          result.budgetType = budget?.period === 'MONTHLY' ? 'PERSONAL' : 'GENERAL';
+        }
+
+        results.push(result);
       }
 
-      return {
-        ...state,
-        result,
-      };
+      const finalResult = isArrayFormat ? results : results[0];
+
+      // 附加调试信息
+      if (state.includeDebugInfo && state.debugInfo) {
+        (finalResult as any).debugInfo = state.debugInfo;
+      }
+
+      return { ...state, result: finalResult as any };
     } catch (error) {
       logger.error('生成结果失败:', error);
       return state;
