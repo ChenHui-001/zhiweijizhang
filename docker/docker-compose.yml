@@ -37,15 +37,14 @@ services:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public&timezone=${DB_TIMEZONE}
       JWT_SECRET: ${JWT_SECRET}
       PORT: ${BACKEND_PORT}
-      # 微信公众号配置
-      WECHAT_APP_ID: ${WECHAT_APP_ID}
-      WECHAT_APP_SECRET: ${WECHAT_APP_SECRET}
-      WECHAT_TOKEN: ${WECHAT_TOKEN}
-      WECHAT_ENCODING_AES_KEY: ${WECHAT_ENCODING_AES_KEY}
-      WECHAT_ENV: ${WECHAT_ENV}
-      WECHAT_DEV_APP_ID: ${WECHAT_DEV_APP_ID}
-      WECHAT_DEV_APP_SECRET: ${WECHAT_DEV_APP_SECRET}
-      WECHAT_DEV_TOKEN: ${WECHAT_DEV_TOKEN}
+      # 微信公众号配置（测试号）
+      WECHAT_ENV: development
+      WECHAT_DEV_APP_ID: wxdfb91c52152b6f9c
+      WECHAT_DEV_APP_SECRET: 79eea45076c93ca1be7aaae707f3cf21
+      WECHAT_DEV_TOKEN: KK1993080816KK
+      WECHAT_DEV_ENCODING_AES_KEY: KK1993080816KK
+      # 外部域名（用于微信OAuth回调等）
+      EXTERNAL_DOMAIN: https://zhiweijz.ztop77.eu.org:16666
       # 注意：S3存储配置已移至管理后台数据库配置
       # 如需配置对象存储，请在应用启动后通过管理后台进行配置
       FILE_MAX_SIZE: ${FILE_MAX_SIZE}
@@ -165,7 +164,7 @@ services:
       PROJECT_NAME: ${PROJECT_NAME}
       BACKEND_PORT: ${BACKEND_PORT}
       FRONTEND_PORT: ${FRONTEND_PORT}
-      EXTERNAL_DOMAIN: ${EXTERNAL_DOMAIN}
+      EXTERNAL_DOMAIN: https://zhiweijz.ztop77.eu.org:16666
     ports:
       - "${NGINX_HTTP_PORT}:80"
       - "${NGINX_HTTPS_PORT}:443"

@@ -128,7 +128,7 @@ export class WechatService {
       const accessToken = await this.getAccessToken();
 
       // 构建微信授权URL
-      const redirectUri = encodeURIComponent('https://wxapp.zhiweijz.cn/api/wechat/binding-page');
+      const redirectUri = encodeURIComponent('https://zhiweijz.ztop77.eu.org:16666/api/wechat/binding-page');
       const authUrl = `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${this.appId}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_base&state=binding#wechat_redirect`;
 
       const menuConfig = {

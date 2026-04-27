@@ -11,15 +11,15 @@ enum BudgetPeriod {
   YEARLY = 'YEARLY',
 }
 import { logger } from '../utils/logger';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../config/database';
 import { TransactionRepository } from '../repositories/transaction.repository';
 import { CategoryRepository } from '../repositories/category.repository';
 import { BudgetRepository } from '../repositories/budget.repository';
 import { FamilyRepository } from '../repositories/family.repository';
+import { AccountBookRepository } from '../repositories/account-book.repository';
+import { BudgetService } from './budget.service';
+import { TagService } from './tag.service';
 import { toCategoryResponseDto } from '../models/category.model';
-
-// 创建Prisma客户端实例
-const prisma = new PrismaClient();
 
 /**
  * 支出统计响应DTO
@@ -134,6 +134,10 @@ export class StatisticsService {
   private budgetRepository: BudgetRepository;
   private familyRepository: FamilyRepository;
 
+  // 分类缓存
+  private categoriesCache: Map<string, { data: Map<string, any>; timestamp: number }> = new Map();
+  private readonly CATEGORIES_CACHE_TTL = 5 * 60 * 1000; // 5分钟
+
   constructor() {
     this.transactionRepository = new TransactionRepository();
     this.categoryRepository = new CategoryRepository();
@@ -208,36 +212,7 @@ export class StatisticsService {
 
     // 计算总支出（考虑多人预算分摊）
     const total = transactions.reduce((sum: number, t: any) => {
-      let actualAmount = Number(t.amount);
-
-      if (t.isMultiBudget && t.budgetAllocation && targetBudgetIds.length > 0) {
-        try {
-          let budgetAllocation;
-          const allocationData = t.budgetAllocation;
-
-          if (typeof allocationData === 'string') {
-            budgetAllocation = JSON.parse(allocationData);
-          } else if (typeof allocationData === 'object') {
-            budgetAllocation = allocationData;
-          }
-
-          if (Array.isArray(budgetAllocation)) {
-            const targetAllocation = budgetAllocation.find(allocation =>
-              targetBudgetIds.includes(allocation.budgetId)
-            );
-
-            if (targetAllocation) {
-              actualAmount = Number(targetAllocation.amount);
-            } else {
-              actualAmount = 0;
-            }
-          }
-        } catch (error) {
-          logger.error('计算总支出时解析预算分摊数据失败:', error);
-        }
-      }
-
-      return sum + actualAmount;
+      return sum + this.getActualAmount(t, targetBudgetIds);
     }, 0);
 
     // 按日期分组
@@ -320,36 +295,7 @@ export class StatisticsService {
 
     // 计算总收入（考虑多人预算分摊）
     const total = transactions.reduce((sum: number, t: any) => {
-      let actualAmount = Number(t.amount);
-
-      if (t.isMultiBudget && t.budgetAllocation && targetBudgetIds.length > 0) {
-        try {
-          let budgetAllocation;
-          const allocationData = t.budgetAllocation;
-
-          if (typeof allocationData === 'string') {
-            budgetAllocation = JSON.parse(allocationData);
-          } else if (typeof allocationData === 'object') {
-            budgetAllocation = allocationData;
-          }
-
-          if (Array.isArray(budgetAllocation)) {
-            const targetAllocation = budgetAllocation.find(allocation =>
-              targetBudgetIds.includes(allocation.budgetId)
-            );
-
-            if (targetAllocation) {
-              actualAmount = Number(targetAllocation.amount);
-            } else {
-              actualAmount = 0;
-            }
-          }
-        } catch (error) {
-          logger.error('计算总收入时解析预算分摊数据失败:', error);
-        }
-      }
-
-      return sum + actualAmount;
+      return sum + this.getActualAmount(t, targetBudgetIds);
     }, 0);
 
     // 按日期分组
@@ -396,8 +342,6 @@ export class StatisticsService {
     let accountBook;
     if (accountBookId) {
       try {
-        // 导入AccountBookRepository
-        const { AccountBookRepository } = require('../repositories/account-book.repository');
         const accountBookRepository = new AccountBookRepository();
 
         // 查找账本
@@ -457,7 +401,6 @@ export class StatisticsService {
     // 在查询预算前，确保用户有当前月份的预算（如果指定了账本ID）
     if (accountBookId) {
       try {
-        const { BudgetService } = require('./budget.service');
         const budgetService = new BudgetService();
         await budgetService.ensureCurrentMonthBudget(userId, accountBookId);
       } catch (error) {
@@ -515,14 +458,12 @@ export class StatisticsService {
 
     logger.debug(`找到 ${transactions.length} 条当前用户的记账记录`);
 
-    // 使用预算仓库的calculateSpentAmount方法来计算总支出
-    const { BudgetRepository } = require('../repositories/budget.repository');
-    const budgetRepository = new BudgetRepository();
+    // 批量计算已使用金额（消除N+1）
+    const spentMap = await this.budgetRepository.calculateBatchSpentAmounts(budgets.map(b => b.id));
 
     let totalSpent = 0;
     for (const budget of budgets) {
-      const spent = await budgetRepository.calculateSpentAmount(budget.id);
-      totalSpent += spent;
+      totalSpent += spentMap.get(budget.id) || 0;
     }
 
     logger.debug('支出金额计算:', {
@@ -555,7 +496,6 @@ export class StatisticsService {
       });
 
     // 获取活跃预算
-    const { BudgetService } = require('../services/budget.service');
     const budgetService = new BudgetService();
     const allActiveBudgets = await budgetService.getActiveBudgets(userId, accountBookId);
 
@@ -582,7 +522,6 @@ export class StatisticsService {
     let familyMembers: any[] = [];
     if (accountBook && accountBook.type === 'FAMILY' && accountBook.familyId &&
         (!budgetType || budgetType === 'PERSONAL')) {
-      const { FamilyRepository } = require('../repositories/family.repository');
       const familyRepository = new FamilyRepository();
       const members = await familyRepository.findFamilyMembers(accountBook.familyId);
 
@@ -799,148 +738,26 @@ export class StatisticsService {
 
     // 计算总收入和总支出（考虑多人预算分摊）
     const income = incomeTransactions.reduce((sum: number, t: any) => {
-      let actualAmount = Number(t.amount);
-
-      if (t.isMultiBudget && t.budgetAllocation && targetBudgetIds.length > 0) {
-        try {
-          let budgetAllocation;
-          const allocationData = t.budgetAllocation;
-
-          if (typeof allocationData === 'string') {
-            budgetAllocation = JSON.parse(allocationData);
-          } else if (typeof allocationData === 'object') {
-            budgetAllocation = allocationData;
-          }
-
-          if (Array.isArray(budgetAllocation)) {
-            const userAllocation = budgetAllocation.find(allocation =>
-              targetBudgetIds.includes(allocation.budgetId)
-            );
-
-            if (userAllocation) {
-              actualAmount = Number(userAllocation.amount);
-            } else {
-              actualAmount = 0;
-            }
-          }
-        } catch (error) {
-          logger.error('计算总收入时解析预算分摊数据失败:', error);
-        }
-      }
-
-      return sum + actualAmount;
+      return sum + this.getActualAmount(t, targetBudgetIds);
     }, 0);
 
     const expense = expenseTransactions.reduce((sum: number, t: any) => {
-      let actualAmount = Number(t.amount);
-
-      if (t.isMultiBudget && t.budgetAllocation && targetBudgetIds.length > 0) {
-        try {
-          let budgetAllocation;
-          const allocationData = t.budgetAllocation;
-
-          if (typeof allocationData === 'string') {
-            budgetAllocation = JSON.parse(allocationData);
-          } else if (typeof allocationData === 'object') {
-            budgetAllocation = allocationData;
-          }
-
-          if (Array.isArray(budgetAllocation)) {
-            const userAllocation = budgetAllocation.find(allocation =>
-              targetBudgetIds.includes(allocation.budgetId)
-            );
-
-            if (userAllocation) {
-              actualAmount = Number(userAllocation.amount);
-            } else {
-              actualAmount = 0;
-            }
-          }
-        } catch (error) {
-          logger.error('计算总支出时解析预算分摊数据失败:', error);
-        }
-      }
-
-      return sum + actualAmount;
+      return sum + this.getActualAmount(t, targetBudgetIds);
     }, 0);
 
     const netIncome = income - expense;
 
-    // 按分类分组收入和支出
+    // 按分类分组收入和支出（复用getActualAmount处理预算分摊）
     const incomeByCategoryMap = new Map<string, number>();
     for (const t of incomeTransactions) {
       const current = incomeByCategoryMap.get(t.categoryId) || 0;
-
-      // 计算实际金额：对于多人预算分摊记录，使用用户的分摊金额
-      let actualAmount = Number(t.amount);
-
-      if (t.isMultiBudget && t.budgetAllocation && targetBudgetIds.length > 0) {
-        try {
-          let budgetAllocation;
-          const allocationData = t.budgetAllocation;
-
-          if (typeof allocationData === 'string') {
-            budgetAllocation = JSON.parse(allocationData);
-          } else if (typeof allocationData === 'object') {
-            budgetAllocation = allocationData;
-          }
-
-          if (Array.isArray(budgetAllocation)) {
-            // 查找目标预算的分摊金额（通过预算ID匹配）
-            const targetAllocation = budgetAllocation.find(allocation =>
-              targetBudgetIds.includes(allocation.budgetId)
-            );
-
-            if (targetAllocation) {
-              actualAmount = Number(targetAllocation.amount);
-            } else {
-              actualAmount = 0;
-            }
-          }
-        } catch (error) {
-          logger.error('解析收入预算分摊数据失败:', error);
-        }
-      }
-
-      incomeByCategoryMap.set(t.categoryId, current + actualAmount);
+      incomeByCategoryMap.set(t.categoryId, current + this.getActualAmount(t, targetBudgetIds));
     }
 
     const expenseByCategoryMap = new Map<string, number>();
     for (const t of expenseTransactions) {
       const current = expenseByCategoryMap.get(t.categoryId) || 0;
-
-      // 计算实际金额：对于多人预算分摊记录，使用用户的分摊金额
-      let actualAmount = Number(t.amount);
-
-      if (t.isMultiBudget && t.budgetAllocation && targetBudgetIds.length > 0) {
-        try {
-          let budgetAllocation;
-          const allocationData = t.budgetAllocation;
-
-          if (typeof allocationData === 'string') {
-            budgetAllocation = JSON.parse(allocationData);
-          } else if (typeof allocationData === 'object') {
-            budgetAllocation = allocationData;
-          }
-
-          if (Array.isArray(budgetAllocation)) {
-            // 查找目标预算的分摊金额（通过预算ID匹配）
-            const targetAllocation = budgetAllocation.find(allocation =>
-              targetBudgetIds.includes(allocation.budgetId)
-            );
-
-            if (targetAllocation) {
-              actualAmount = Number(targetAllocation.amount);
-            } else {
-              actualAmount = 0;
-            }
-          }
-        } catch (error) {
-          logger.error('解析支出预算分摊数据失败:', error);
-        }
-      }
-
-      expenseByCategoryMap.set(t.categoryId, current + actualAmount);
+      expenseByCategoryMap.set(t.categoryId, current + this.getActualAmount(t, targetBudgetIds));
     }
 
     // 获取收入分类排名
@@ -1120,6 +937,36 @@ export class StatisticsService {
   }
 
   /**
+   * 解析多人预算分摊金额
+   * 对于多人预算分摊记录，根据目标预算ID列表查找对应的分摊金额
+   * 非分摊记录直接返回原始金额
+   */
+  private getActualAmount(transaction: any, targetBudgetIds: string[]): number {
+    if (!transaction.isMultiBudget || !transaction.budgetAllocation || targetBudgetIds.length === 0) {
+      return Number(transaction.amount);
+    }
+
+    try {
+      const allocationData = transaction.budgetAllocation;
+      const budgetAllocation = typeof allocationData === 'string'
+        ? JSON.parse(allocationData)
+        : allocationData;
+
+      if (Array.isArray(budgetAllocation)) {
+        const targetAllocation = budgetAllocation.find(a => targetBudgetIds.includes(a.budgetId));
+        if (targetAllocation) {
+          return Number(targetAllocation.amount);
+        }
+        return 0; // 不属于当前筛选预算的记录
+      }
+    } catch (error) {
+      logger.error('解析预算分摊数据失败:', error);
+    }
+
+    return Number(transaction.amount);
+  }
+
+  /**
    * 按分类分组记账
    */
   private async groupTransactionsByCategory(
@@ -1159,42 +1006,7 @@ export class StatisticsService {
     for (const transaction of transactions) {
       const categoryId = transaction.categoryId;
       const currentAmount = groupedData.get(categoryId) || 0;
-
-      // 计算实际金额：对于多人预算分摊记录，使用用户的分摊金额
-      let actualAmount = Number(transaction.amount);
-
-      if (transaction.isMultiBudget && transaction.budgetAllocation && budgetIdsForCalculation.length > 0) {
-        try {
-          let budgetAllocation;
-          const allocationData = transaction.budgetAllocation;
-
-          if (typeof allocationData === 'string') {
-            budgetAllocation = JSON.parse(allocationData);
-          } else if (typeof allocationData === 'object') {
-            budgetAllocation = allocationData;
-          }
-
-          if (Array.isArray(budgetAllocation)) {
-            // 查找目标预算的分摊金额（通过预算ID匹配）
-            const targetAllocation = budgetAllocation.find(allocation =>
-              budgetIdsForCalculation.includes(allocation.budgetId)
-            );
-
-            if (targetAllocation) {
-              actualAmount = Number(targetAllocation.amount);
-              logger.info(`分类统计-多人预算分摊记录 ${transaction.id}：总金额 ${transaction.amount}，目标分摊 ${actualAmount}（预算ID: ${targetAllocation.budgetId}）`);
-            } else {
-              // 如果找不到目标预算的分摊信息，使用0（该记录不属于当前筛选的预算）
-              actualAmount = 0;
-              logger.info(`分类统计-多人预算分摊记录 ${transaction.id}：未找到目标预算的分摊信息`);
-            }
-          }
-        } catch (error) {
-          logger.error('分类统计-解析预算分摊数据失败:', error);
-          // 解析失败时使用原始金额
-        }
-      }
-
+      const actualAmount = this.getActualAmount(transaction, budgetIdsForCalculation);
       groupedData.set(categoryId, currentAmount + actualAmount);
     }
 
@@ -1324,9 +1136,14 @@ export class StatisticsService {
       }
     }
 
-    // 使用预算仓库的calculateSpentAmount方法来获取准确的已使用金额
-    const { BudgetRepository } = require('../repositories/budget.repository');
-    const budgetRepository = new BudgetRepository();
+    // 批量计算所有分类预算的已使用金额（消除N+1）
+    const budgetIdsForCategories: string[] = [];
+    budgetIdByCategory.forEach((budgetId) => {
+      if (budgetId) budgetIdsForCategories.push(budgetId);
+    });
+    const categorySpentMap = budgetIdsForCategories.length > 0
+      ? await this.budgetRepository.calculateBatchSpentAmounts(budgetIdsForCategories)
+      : new Map<string, number>();
 
     // 合并预算和支出数据
     const result: Array<{
@@ -1340,12 +1157,7 @@ export class StatisticsService {
     // 处理有预算的分类
     for (const [categoryId, budget] of budgetByCategory.entries()) {
       const budgetId = budgetIdByCategory.get(categoryId);
-      let spent = 0;
-
-      if (budgetId) {
-        // 使用预算ID来计算准确的已使用金额
-        spent = await budgetRepository.calculateSpentAmount(budgetId);
-      }
+      const spent = budgetId ? (categorySpentMap.get(budgetId) || 0) : 0;
 
       const category = categories.get(categoryId);
 
@@ -1370,6 +1182,15 @@ export class StatisticsService {
    * 获取分类映射
    */
   private async getCategoriesMap(userId: string, familyId?: string): Promise<Map<string, any>> {
+    const cacheKey = familyId ? `family:${familyId}` : `user:${userId}`;
+    const now = Date.now();
+    const cached = this.categoriesCache.get(cacheKey);
+
+    if (cached && (now - cached.timestamp) < this.CATEGORIES_CACHE_TTL) {
+      logger.debug('命中分类缓存');
+      return cached.data;
+    }
+
     // 获取默认分类
     const defaultCategories = await this.categoryRepository.findDefaultCategories();
 
@@ -1394,6 +1215,9 @@ export class StatisticsService {
     }
 
     logger.debug(`分类映射包含 ${categoriesMap.size} 个分类`);
+
+    // 写入缓存
+    this.categoriesCache.set(cacheKey, { data: categoriesMap, timestamp: now });
 
     return categoriesMap;
   }
@@ -1426,7 +1250,6 @@ export class StatisticsService {
     categoryIds?: string[],
   ): Promise<any> {
     // 验证用户是否有权访问账本
-    const { AccountBookRepository } = require('../repositories/account-book.repository');
     const accountBookRepository = new AccountBookRepository();
 
     const accountBook = await accountBookRepository.findById(accountBookId);
@@ -1450,7 +1273,6 @@ export class StatisticsService {
     }
 
     // 获取标签统计数据
-    const { TagService } = require('./tag.service');
     const tagService = new TagService();
 
     const statistics = await tagService.getTagStatistics({
