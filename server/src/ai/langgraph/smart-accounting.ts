@@ -132,14 +132,11 @@ export class SmartAccounting {
   }
 
   /**
-   * 获取预算列表用于LLM提示
-   * @param userId 用户ID
-   * @param accountId 账本ID
-   * @returns 预算列表字符串
+   * 获取预算数据（合并了预算列表提示文本和内存匹配数据）
+   * 一次查询同时返回预算列表文本和预算数组，避免重复查库
    */
-  private async getBudgetListForPrompt(userId: string, accountId: string): Promise<string> {
+  private async getBudgetData(userId: string, accountId: string): Promise<{ budgetListText: string; activeBudgets: any[] }> {
     try {
-      // 获取当前账本信息
       const accountBook = await prisma.accountBook.findUnique({
         where: { id: accountId },
         include: {
@@ -148,10 +145,7 @@ export class SmartAccounting {
               members: {
                 include: {
                   user: {
-                    select: {
-                      id: true,
-                      name: true,
-                    },
+                    select: { id: true, name: true },
                   },
                 },
               },
@@ -161,168 +155,81 @@ export class SmartAccounting {
       });
 
       if (!accountBook) {
-        return '';
+        return { budgetListText: '', activeBudgets: [] };
       }
 
-      const budgets = [];
       const currentDate = new Date();
 
-      // 获取当前活跃的预算
       const activeBudgets = await prisma.budget.findMany({
         where: {
           OR: [
-            // 账本预算
-            {
-              accountBookId: accountId,
-              startDate: { lte: currentDate },
-              endDate: { gte: currentDate },
-            },
-            // 用户个人预算
-            {
-              userId: userId,
-              startDate: { lte: currentDate },
-              endDate: { gte: currentDate },
-            },
-            // 家庭预算（如果是家庭账本）
+            { accountBookId: accountId, startDate: { lte: currentDate }, endDate: { gte: currentDate } },
+            { userId: userId, startDate: { lte: currentDate }, endDate: { gte: currentDate } },
             ...(accountBook.familyId
-              ? [
-                  {
-                    familyId: accountBook.familyId,
-                    startDate: { lte: currentDate },
-                    endDate: { gte: currentDate },
-                  },
-                ]
+              ? [{ familyId: accountBook.familyId, startDate: { lte: currentDate }, endDate: { gte: currentDate } }]
               : []),
           ],
         },
         include: {
           familyMember: {
             include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
+              user: { select: { id: true, name: true } },
             },
           },
         },
       });
 
-      // 批量获取所有需要的用户信息（修复N+1查询问题）
-      const userIds = [...new Set(activeBudgets
-        .filter(b => b.userId && !b.familyMemberId)
-        .map(b => b.userId)
+      // 批量查询用户名称
+      const budgetUserIds = [...new Set(activeBudgets
+        .filter((b: any) => b.userId && !b.familyMemberId)
+        .map((b: any) => b.userId)
         .filter((id): id is string => id !== null))];
 
       const usersMap = new Map<string, string>();
-      if (userIds.length > 0) {
+      if (budgetUserIds.length > 0) {
         const users = await prisma.user.findMany({
-          where: { id: { in: userIds } },
+          where: { id: { in: budgetUserIds } },
           select: { id: true, name: true },
         });
         users.forEach(u => usersMap.set(u.id, u.name));
       }
 
-      // 处理预算信息
+      const budgetLines: string[] = [];
       for (const budget of activeBudgets) {
-        let budgetDisplayName = budget.name;
-
-        // 根据预算类型生成正确的显示名称
+        let displayName = budget.name;
         if ((budget as any).budgetType === 'GENERAL') {
-          // 通用预算：直接使用预算名称
-          budgetDisplayName = budget.name;
+          displayName = budget.name;
         } else if ((budget as any).budgetType === 'PERSONAL') {
-          // 个人预算：只显示人员名称
           if (budget.familyMemberId && budget.familyMember) {
-            // 托管成员预算
-            budgetDisplayName = budget.familyMember.user?.name || budget.familyMember.name;
+            displayName = budget.familyMember.user?.name || budget.familyMember.name;
           } else if (budget.userId) {
-            // 使用批量查询的用户信息
-            budgetDisplayName = usersMap.get(budget.userId) || budget.name;
+            displayName = usersMap.get(budget.userId) || budget.name;
           }
         }
-
-        budgets.push(`- 预算名称: ${budgetDisplayName}, ID: ${budget.id}`);
+        budgetLines.push(`- 预算名称: ${displayName}, ID: ${budget.id}`);
       }
 
-      return budgets.join('\n');
+      return { budgetListText: budgetLines.join('\n'), activeBudgets };
     } catch (error) {
-      logger.error('获取预算列表失败:', error);
-      return '';
+      logger.error('获取预算数据失败:', error);
+      return { budgetListText: '', activeBudgets: [] };
     }
   }
 
   /**
+   * 获取预算列表用于LLM提示
+   */
+  private async getBudgetListForPrompt(userId: string, accountId: string): Promise<string> {
+    const { budgetListText } = await this.getBudgetData(userId, accountId);
+    return budgetListText;
+  }
+
+  /**
    * 获取预算列表用于内存匹配（返回预算数据）
-   * @param userId 用户ID
-   * @param accountId 账本ID
-   * @returns 活跃预算数组
    */
   private async getActiveBudgetsForMatching(userId: string, accountId: string): Promise<any[]> {
-    try {
-      // 获取当前账本信息
-      const accountBook = await prisma.accountBook.findUnique({
-        where: { id: accountId },
-        include: {
-          family: {
-            include: {
-              members: {
-                include: {
-                  user: {
-                    select: {
-                      id: true,
-                      name: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
-
-      if (!accountBook) {
-        return [];
-      }
-
-      const currentDate = new Date();
-
-      // 获取当前活跃的预算
-      const activeBudgets = await prisma.budget.findMany({
-        where: {
-          OR: [
-            // 账本预算
-            {
-              accountBookId: accountId,
-              startDate: { lte: currentDate },
-              endDate: { gte: currentDate },
-            },
-            // 用户个人预算
-            {
-              userId: userId,
-              startDate: { lte: currentDate },
-              endDate: { gte: currentDate },
-            },
-            // 家庭预算（如果是家庭账本）
-            ...(accountBook.familyId
-              ? [
-                  {
-                    familyId: accountBook.familyId,
-                    startDate: { lte: currentDate },
-                    endDate: { gte: currentDate },
-                  },
-                ]
-              : []),
-          ],
-        },
-      });
-
-      return activeBudgets;
-    } catch (error) {
-      logger.error('获取预算列表失败:', error);
-      return [];
-    }
+    const { activeBudgets } = await this.getBudgetData(userId, accountId);
+    return activeBudgets;
   }
 
   /**
@@ -403,16 +310,18 @@ export class SmartAccounting {
   private async analyzeTransactionHandler(state: SmartAccountingState) {
     try {
       // 并行获取所有需要的数据（优化性能）
-      const [config, categories, budgetListText, activeBudgets] = await Promise.all([
+      const [config, categories, budgetData] = await Promise.all([
         multimodalAIConfigService.getFullConfig(),
         prisma.category.findMany({
           where: {
             OR: [{ userId: state.userId }, { isDefault: true }, { accountBookId: state.accountId }],
           },
         }),
-        this.getBudgetListForPrompt(state.userId, state.accountId || ''),
-        this.getActiveBudgetsForMatching(state.userId, state.accountId || ''),
+        this.getBudgetData(state.userId, state.accountId || ''),
       ]);
+
+      const budgetListText = budgetData.budgetListText;
+      const activeBudgets = budgetData.activeBudgets;
 
       // 使用已有的categories构建简化的分类列表（避免重复查询）
       const categoryList = categories
@@ -595,14 +504,19 @@ export class SmartAccounting {
       return state;
     }
 
+    // 如果内存匹配已在analyzeTransactionHandler中完成，跳过重复的DB查询
+    if ((state.analyzedTransaction as any).budgetId) {
+      logger.info(`[预算匹配] 内存匹配已完成，跳过DB查询: ${state.analyzedTransaction.budgetId}`);
+      return state;
+    }
+
     try {
-      let budget = null;
       logger.info(`[预算匹配] 开始为用户 ${state.userId} 匹配预算`);
 
       // 如果LLM识别出了预算名称，优先根据预算名称匹配
       if (state.analyzedTransaction.budgetName) {
         logger.info(`[预算匹配] 尝试根据预算名称匹配: ${state.analyzedTransaction.budgetName}`);
-        budget = await this.findBudgetByName(
+        const budget = await this.findBudgetByName(
           state.analyzedTransaction.budgetName,
           state.userId,
           state.accountId,
@@ -611,98 +525,47 @@ export class SmartAccounting {
           logger.info(`[预算匹配] 根据预算名称找到匹配的预算: ${budget.id} - ${budget.name}`);
           return {
             ...state,
-            matchedBudget: {
-              id: budget.id,
-              name: budget.name,
-            },
+            matchedBudget: { id: budget.id, name: budget.name },
           };
-        } else {
-          logger.info(`[预算匹配] 未找到名称匹配的预算，使用默认逻辑`);
         }
+        logger.info(`[预算匹配] 未找到名称匹配的预算，使用默认逻辑`);
       }
 
-      // 如果没有识别出预算名称或根据名称未找到，则使用默认逻辑
-      // 优先级：
-      // 1. 请求发起人在当前账本的个人预算（排除托管成员预算，优先级最高）
-      // 2. 当前账本的通用预算（按分类匹配）
-      // 3. 当前账本的通用预算（不限分类）
-
-      logger.info(`[预算匹配] 查找用户 ${state.userId} 在账本 ${state.accountId} 的个人预算`);
-
-      // 首先尝试找到请求发起人的个人预算（排除托管成员预算）
-      budget = await prisma.budget.findFirst({
+      // 查找个人预算（排除托管成员）
+      let budget = await prisma.budget.findFirst({
         where: {
           userId: state.userId,
           accountBookId: state.accountId,
-          budgetType: 'PERSONAL', // 明确指定个人预算类型
-          familyMemberId: null, // 排除托管成员预算，只匹配记账人自己的个人预算
+          budgetType: 'PERSONAL',
+          familyMemberId: null,
           startDate: { lte: state.analyzedTransaction.date },
           endDate: { gte: state.analyzedTransaction.date },
         },
-        orderBy: [
-          // 优先匹配分类
-          { categoryId: state.analyzedTransaction.categoryId ? 'desc' : 'asc' },
-        ],
+        orderBy: [{ categoryId: state.analyzedTransaction.categoryId ? 'desc' : 'asc' }],
       });
 
-      if (budget) {
-        logger.info(
-          `[预算匹配] 找到用户个人预算: ${budget.id} - ${budget.name} (分类匹配: ${
-            budget.categoryId === state.analyzedTransaction.categoryId ? '是' : '否'
-          })`,
-        );
-      }
-
-      // 如果没有找到发起人的个人预算，再尝试其他预算
       if (!budget) {
-        logger.info(`[预算匹配] 未找到个人预算，查找账本通用预算`);
+        // 查找账本分类预算或通用预算
         budget = await prisma.budget.findFirst({
           where: {
             OR: [
-              // 当前账本预算（按分类匹配）
-              {
-                accountBookId: state.accountId,
-                categoryId: state.analyzedTransaction.categoryId,
-                startDate: { lte: state.analyzedTransaction.date },
-                endDate: { gte: state.analyzedTransaction.date },
-              },
-              // 通用账本预算
-              {
-                accountBookId: state.accountId,
-                categoryId: null,
-                startDate: { lte: state.analyzedTransaction.date },
-                endDate: { gte: state.analyzedTransaction.date },
-              },
+              { accountBookId: state.accountId, categoryId: state.analyzedTransaction.categoryId, startDate: { lte: state.analyzedTransaction.date }, endDate: { gte: state.analyzedTransaction.date } },
+              { accountBookId: state.accountId, categoryId: null, startDate: { lte: state.analyzedTransaction.date }, endDate: { gte: state.analyzedTransaction.date } },
             ],
           },
-          orderBy: [
-            // 优先匹配分类的预算
-            { categoryId: 'desc' },
-          ],
+          orderBy: [{ categoryId: 'desc' }],
         });
-
-        if (budget) {
-          logger.info(
-            `[预算匹配] 找到账本预算: ${budget.id} - ${budget.name} (类型: ${
-              budget.categoryId ? '分类预算' : '通用预算'
-            })`,
-          );
-        }
       }
 
       if (budget) {
+        logger.info(`[预算匹配] 找到预算: ${budget.id} - ${budget.name}`);
         return {
           ...state,
-          matchedBudget: {
-            id: budget.id,
-            name: budget.name,
-          },
+          matchedBudget: { id: budget.id, name: budget.name },
         };
       }
 
-      logger.info(
-        `[预算匹配] 未找到任何匹配的预算，分类ID: ${state.analyzedTransaction.categoryId}`,
-      );
+      logger.info(`[预算匹配] 未找到任何匹配的预算，分类ID: ${state.analyzedTransaction.categoryId}`);
       return state;
     } catch (error) {
       logger.error('预算匹配错误:', error);
@@ -924,102 +787,68 @@ export class SmartAccounting {
       
       logger.info(`[结果生成] 处理 ${transactions.length} 条交易记录`);
 
+      // 批量获取所有分类和预算信息（消除N+1查询）
+      const categoryIds = [...new Set(transactions.map((t: any) => t.categoryId).filter(Boolean))];
+      const budgetIds = [...new Set(transactions.map((t: any) => t.budgetId).filter(Boolean))];
+
+      const [categories, budgets] = await Promise.all([
+        categoryIds.length > 0
+          ? prisma.category.findMany({ where: { id: { in: categoryIds } } })
+          : Promise.resolve([]),
+        budgetIds.length > 0
+          ? prisma.budget.findMany({
+              where: { id: { in: budgetIds } },
+              include: {
+                user: { select: { id: true, name: true } },
+                familyMember: { include: { user: { select: { id: true, name: true } } } },
+              },
+            })
+          : Promise.resolve([]),
+      ]);
+
+      const categoryMap = new Map(categories.map((c: any) => [c.id, c]));
+      const budgetMap = new Map(budgets.map((b: any) => [b.id, b]));
+
       const results = [];
 
-      // 处理每条交易记录
       for (let i = 0; i < transactions.length; i++) {
         const transaction = transactions[i];
-        logger.info(`[结果生成] 处理第 ${i + 1} 条记录:`, transaction);
+        const category = categoryMap.get(transaction.categoryId);
+        const budget = transaction.budgetId ? budgetMap.get(transaction.budgetId) : null;
 
-        // 获取分类信息
-        const category = await prisma.category.findUnique({
-          where: { id: transaction.categoryId },
-        });
-
-        // 获取预算信息（如果有预算匹配）
-        let budget = null;
         let budgetOwnerName = null;
-        if (transaction.budgetId) {
-          budget = await prisma.budget.findUnique({
-            where: { id: transaction.budgetId },
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-              familyMember: {
-                include: {
-                  user: {
-                    select: {
-                      id: true,
-                      name: true,
-                    },
-                  },
-                },
-              },
-            },
-          });
-
-          // 获取预算所属人员名称
-          if (budget) {
-            if (budget.familyMemberId && budget.familyMember) {
-              // 家庭成员预算（包括托管成员）
-              budgetOwnerName = budget.familyMember.user?.name || budget.familyMember.name;
-            } else if (budget.userId && budget.user) {
-              // 个人用户预算
-              budgetOwnerName = budget.user.name;
-            } else {
-              // 通用预算（直接使用预算名称）
-              budgetOwnerName = budget.name;
-            }
+        if (budget) {
+          if (budget.familyMemberId && budget.familyMember) {
+            budgetOwnerName = budget.familyMember.user?.name || budget.familyMember.name;
+          } else if (budget.userId && budget.user) {
+            budgetOwnerName = budget.user.name;
+          } else {
+            budgetOwnerName = budget.name;
           }
         }
 
-        // 生成当前记录的最终结果
-        const result = {
-          // 记账基本信息
+        results.push({
           amount: transaction.amount,
           date: transaction.date,
           categoryId: transaction.categoryId,
           categoryName: category?.name || transaction.categoryName,
           type: category?.type || transaction.type,
           note: transaction.note,
-
-          // 账本信息
           accountId: state.accountId || '',
           accountName: accountBook?.name || '未知账本',
           accountType: accountBook?.type.toLowerCase() || state.accountType || 'personal',
-
-          // 预算信息
           budgetId: transaction.budgetId,
           budgetName: budget?.name,
           budgetOwnerName: budgetOwnerName || undefined,
           budgetType: budget?.period === 'MONTHLY' ? 'PERSONAL' : 'GENERAL',
-
-          // 用户信息
           userId: state.userId,
-
-          // AI分析信息
           confidence: transaction.confidence,
-
-          // 创建时间
           createdAt: new Date(),
-
-          // 原始描述
           originalDescription: state.description,
-
-          // 调试信息（仅在开发环境或调试模式下包含）
           ...(process.env.NODE_ENV === 'development' || state.includeDebugInfo
-            ? {
-                debugInfo: state.debugInfo,
-              }
+            ? { debugInfo: state.debugInfo }
             : {}),
-        };
-
-        results.push(result);
-        logger.info(`[结果生成] 第 ${i + 1} 条记录生成完成:`, result);
+        });
       }
 
       // 如果是多条记录，返回数组；如果是单条记录，返回单个对象

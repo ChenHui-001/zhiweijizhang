@@ -685,39 +685,43 @@ export class EnhancedSmartAccounting {
       });
 
       const isArrayFormat = state.transactions.length > 1;
+
+      // 批量获取所有分类和预算信息（消除N+1查询）
+      const categoryIds = [...new Set(state.transactions.map(t => t.categoryId).filter(Boolean))];
+      const budgetIds = [...new Set(state.transactions.map(t => t.budgetId).filter((id): id is string => !!id))];
+
+      const [categories, budgets] = await Promise.all([
+        categoryIds.length > 0
+          ? prisma.category.findMany({ where: { id: { in: categoryIds } } })
+          : Promise.resolve([]),
+        budgetIds.length > 0
+          ? prisma.budget.findMany({
+              where: { id: { in: budgetIds } },
+              include: {
+                user: { select: { name: true } },
+                familyMember: { include: { user: { select: { name: true } } } },
+              },
+            })
+          : Promise.resolve([]),
+      ]);
+
+      const categoryMap = new Map(categories.map((c: any) => [c.id, c]));
+      const budgetMap = new Map(budgets.map((b: any) => [b.id, b]));
+
       const results: SmartAccountingResult[] = [];
 
       for (const transaction of state.transactions) {
-        // 获取分类信息
-        let category = null;
-        if (transaction.categoryId) {
-          category = await prisma.category.findUnique({
-            where: { id: transaction.categoryId },
-          });
-        }
+        const category = categoryMap.get(transaction.categoryId);
+        const budget = transaction.budgetId ? budgetMap.get(transaction.budgetId) : null;
 
-        // 获取预算信息
-        let budget = null;
         let budgetOwnerName = null;
-        if (transaction.budgetId) {
-          budget = await prisma.budget.findUnique({
-            where: { id: transaction.budgetId },
-            include: {
-              user: { select: { name: true } },
-              familyMember: {
-                include: { user: { select: { name: true } } },
-              },
-            },
-          });
-
-          if (budget) {
-            if (budget.familyMemberId && budget.familyMember) {
-              budgetOwnerName = budget.familyMember.user?.name || budget.familyMember.name;
-            } else if (budget.userId && budget.user) {
-              budgetOwnerName = budget.user.name;
-            } else {
-              budgetOwnerName = budget.name;
-            }
+        if (budget) {
+          if (budget.familyMemberId && budget.familyMember) {
+            budgetOwnerName = budget.familyMember.user?.name || budget.familyMember.name;
+          } else if (budget.userId && budget.user) {
+            budgetOwnerName = budget.user.name;
+          } else {
+            budgetOwnerName = budget.name;
           }
         }
 
