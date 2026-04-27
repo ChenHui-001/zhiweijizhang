@@ -176,13 +176,10 @@ export class TokenUsageService {
       const usedTokens = Number(todayStats._sum.totalTokens) || 0;
       const totalCalls = successfulCalls + failedCalls;
 
-      // 使用TokenLimitService获取真实的限额
-      const { TokenLimitService } = await import('./token-limit.service');
-      const tokenLimitService = new TokenLimitService();
-      const dailyLimit = await tokenLimitService.getUserDailyTokenLimit(userId);
-
-      const remainingTokens = Math.max(0, dailyLimit - usedTokens);
-      const usagePercentage = dailyLimit > 0 ? Math.round((usedTokens / dailyLimit) * 100) : 0;
+      // Token限额系统已移除，使用无限制
+      const dailyLimit = Number.MAX_SAFE_INTEGER;
+      const remainingTokens = Number.MAX_SAFE_INTEGER;
+      const usagePercentage = 0;
 
       return {
         usedTokens,

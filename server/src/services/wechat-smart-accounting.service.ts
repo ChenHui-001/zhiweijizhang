@@ -74,13 +74,6 @@ export class WechatSmartAccountingService {
 
       // 4. 检查分析结果
       if ('error' in analysisResult) {
-        if (analysisResult.error.includes('Token使用受限')) {
-          return {
-            success: false,
-            message: 'AI服务使用受限，请稍后重试。',
-            error: 'TOKEN_LIMIT_EXCEEDED',
-          };
-        }
         return {
           success: false,
           message: `${analysisResult.error}\n\n请发送有效的记账信息，例如："50 餐饮 午餐"`,

@@ -6,7 +6,6 @@ import { DeepseekProvider } from './deepseek-provider';
 import { CustomProvider } from './custom-provider';
 import { VolcengineProvider } from './volcengine-provider';
 import { LLMSettings, Message, LLMResponse } from '../types/llm-types';
-import { TokenLimitService } from '../../services/token-limit.service';
 import { MultiProviderLLMService } from './multi-provider-service';
 import prisma from '../../config/database';
 
@@ -17,8 +16,6 @@ import prisma from '../../config/database';
 export class LLMProviderService {
   /** 提供商映射 */
   private providers: Map<string, LLMProvider> = new Map();
-  /** Token限制服务 */
-  private tokenLimitService: TokenLimitService = new TokenLimitService();
   /** 多提供商服务（延迟初始化） */
   private _multiProviderService?: MultiProviderLLMService;
   /** 默认设置 */

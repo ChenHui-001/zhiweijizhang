@@ -1077,7 +1077,6 @@ export default function EnhancedSmartAccountingDialog({
               if (accountBookId) {
                 try {
                   refreshDashboardCache(accountBookId);
-                  // 刷新记账点余额
                                   } catch (refreshError) {
                   console.error('刷新仪表盘数据失败:', refreshError);
                 }
@@ -1480,7 +1479,7 @@ export default function EnhancedSmartAccountingDialog({
                   if (response && response.success) {
                     toast.success(`成功创建 ${response.count} 条记账记录`);
 
-                    // 刷新仪表盘数据和记账点余额
+                    // 刷新仪表盘数据
                     try {
                       refreshDashboardCache(accountBookId);
                                           } catch (refreshError) {
@@ -1515,7 +1514,7 @@ export default function EnhancedSmartAccountingDialog({
                   if (response && response.success) {
                     toast.success(`成功创建 ${response.count} 条记账记录`);
 
-                    // 刷新仪表盘数据和记账点余额
+                    // 刷新仪表盘数据
                     try {
                       refreshDashboardCache(accountBookId);
                                           } catch (refreshError) {
@@ -1659,7 +1658,7 @@ export default function EnhancedSmartAccountingDialog({
                   if (response && response.success) {
                     toast.success(`成功创建 ${response.count} 条记账记录`);
 
-                    // 刷新仪表盘数据和记账点余额
+                    // 刷新仪表盘数据
                     try {
                       refreshDashboardCache(accountBookId);
                                           } catch (refreshError) {
@@ -1694,7 +1693,7 @@ export default function EnhancedSmartAccountingDialog({
                   if (response && response.success) {
                     toast.success(`成功创建 ${response.count} 条记账记录`);
 
-                    // 刷新仪表盘数据和记账点余额
+                    // 刷新仪表盘数据
                     try {
                       refreshDashboardCache(accountBookId);
                                           } catch (refreshError) {
@@ -1807,7 +1806,7 @@ export default function EnhancedSmartAccountingDialog({
                   if (response && response.success) {
                     toast.success(`成功创建 ${response.count} 条记账记录`);
 
-                    // 刷新仪表盘数据和记账点余额
+                    // 刷新仪表盘数据
                     try {
                       refreshDashboardCache(accountBookId);
                                           } catch (refreshError) {
