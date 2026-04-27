@@ -35,8 +35,11 @@ export default function AIServicesPage() {
     deleteService,
   } = useAIServicesStore();
 
-  const [selectedServiceType, setSelectedServiceType] = useState<'official' | 'custom'>('official');
+  const [selectedServiceType, setSelectedServiceType] = useState<'official' | 'custom'>('custom');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // 获取当前激活的服务名称
+  const activeServiceName = globalConfig?.customServiceName || '';
 
   useMobileBackHandler({
     pageId: 'settings-ai-services',
@@ -76,6 +79,8 @@ export default function AIServicesPage() {
       setSelectedServiceType(type);
       if (type === 'custom' && services.length > 0) {
         await switchServiceType('custom', services[0].id);
+      } else if (type === 'custom') {
+        await switchServiceType('custom', '');
       } else {
         await switchServiceType('official');
       }
@@ -164,27 +169,9 @@ export default function AIServicesPage() {
       {/* AI服务类型切换 */}
       {userAIEnabled && (
         <div className={styles.globalAISwitch}>
-          <h3 style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)', margin: '0 0 16px 0' }}>AI服务类型</h3>
-          <div className={styles.serviceTypeButtons}>
-            <button
-              onClick={() => handleServiceTypeChange('official')}
-              className={`${styles.serviceTypeButton} ${selectedServiceType === 'official' ? styles.active : ''}`}
-            >
-              <i className="fas fa-crown"></i>
-              官方AI
-            </button>
-            <button
-              onClick={() => handleServiceTypeChange('custom')}
-              className={`${styles.serviceTypeButton} ${selectedServiceType === 'custom' ? styles.active : ''}`}
-            >
-              <i className="fas fa-user-cog"></i>
-              自定义AI
-            </button>
-          </div>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '12px 0 0 0' }}>
-            {selectedServiceType === 'official'
-              ? '使用系统内置AI服务，会消耗记账点'
-              : '使用您配置的API服务，完全免费'}
+          <h3 style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)', margin: '0 0 16px 0' }}>自定义AI服务</h3>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 16px 0' }}>
+            配置您的自定义API服务，享受免费的智能记账功能
           </p>
         </div>
       )}
@@ -220,7 +207,14 @@ export default function AIServicesPage() {
               {services.map((service) => (
                 <div key={service.id} className={styles.aiServiceItem}>
                   <div className={styles.serviceInfo}>
-                    <div className={styles.serviceName}>{service.name}</div>
+                    <div className={styles.serviceName}>
+                      {service.name}
+                      {service.name === activeServiceName && (
+                        <span className={styles.serviceBadge}>
+                          <i className="fas fa-check-circle"></i> 使用中
+                        </span>
+                      )}
+                    </div>
                     <div className={styles.serviceDetails}>
                       <span className={styles.serviceProvider}>{service.provider}</span>
                       <span className={styles.serviceModel}>{service.model}</span>
@@ -249,17 +243,17 @@ export default function AIServicesPage() {
       )}
 
       {/* 官方AI提示 */}
-      {userAIEnabled && selectedServiceType === 'official' && (
+      {userAIEnabled && (
         <div className={styles.globalAISwitch} style={{ backgroundColor: 'rgba(59, 130, 246, 0.05)', borderColor: 'rgba(59, 130, 246, 0.2)' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
             <i className="fas fa-info-circle" style={{ fontSize: '20px', color: 'var(--primary-color)', marginTop: '2px' }}></i>
             <div>
-              <h4 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)', margin: '0 0 8px 0' }}>使用官方AI服务</h4>
+              <h4 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)', margin: '0 0 8px 0' }}>使用自定义AI服务</h4>
               <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>
-                官方AI服务由系统提供。
+                自定义AI服务让您可以使用自己的API密钥，完全免费使用智能记账功能。
               </p>
               <p style={{ marginTop: '12px', fontSize: '13px', color: 'var(--primary-color)' }}>
-                💡 推荐配置自定义AI服务，享受更灵活的AI功能
+                💡 推荐使用硅基流动等国内AI提供商，性价比高且稳定
               </p>
             </div>
           </div>

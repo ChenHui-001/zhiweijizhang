@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import prisma from '../config/database';
 import { SpeechRecognitionService } from '../services/speech-recognition.service';
 import { VisionRecognitionService } from '../services/vision-recognition.service';
-import { MultimodalAIConfigService } from '../services/multimodal-ai-config.service';
+import multimodalAIConfigService from '../services/multimodal-ai-config.service';
 import { FileStorageService } from '../services/file-storage.service';
 import {
   SpeechRecognitionRequest,
@@ -22,13 +22,11 @@ import { MultimodalAILoggingService } from '../admin/middleware/multimodal-ai-lo
 export class MultimodalAIController {
   private speechService: SpeechRecognitionService;
   private visionService: VisionRecognitionService;
-  private configService: MultimodalAIConfigService;
   private fileStorageService: FileStorageService;
 
   constructor() {
     this.speechService = new SpeechRecognitionService();
     this.visionService = new VisionRecognitionService();
-    this.configService = new MultimodalAIConfigService();
     this.fileStorageService = FileStorageService.getInstance();
   }
 
@@ -84,7 +82,7 @@ export class MultimodalAIController {
 
       // 获取语音识别配置（用于日志记录）
       try {
-        speechConfig = await this.configService.getSpeechConfig();
+        speechConfig = await multimodalAIConfigService.getSpeechConfig();
       } catch (configError) {
         logger.warn('获取语音识别配置失败:', configError);
       }
@@ -180,7 +178,7 @@ export class MultimodalAIController {
 
       // 获取视觉识别配置（用于日志记录）
       try {
-        visionConfig = await this.configService.getVisionConfig();
+        visionConfig = await multimodalAIConfigService.getVisionConfig();
       } catch (configError) {
         logger.warn('获取视觉识别配置失败:', configError);
       }
@@ -428,7 +426,7 @@ export class MultimodalAIController {
 
       // 1. 获取视觉识别配置（用于日志记录）
       try {
-        visionConfig = await this.configService.getVisionConfig();
+        visionConfig = await multimodalAIConfigService.getVisionConfig();
       } catch (configError) {
         logger.warn('获取视觉识别配置失败:', configError);
       }
@@ -480,7 +478,7 @@ export class MultimodalAIController {
       }
 
       // 2. 获取配置的提示词
-      const config = await this.configService.getFullConfig();
+      const config = await multimodalAIConfigService.getFullConfig();
       const imageAnalysisPrompt = config.smartAccounting.imageAnalysisPrompt ||
         config.smartAccounting.multimodalPrompt ||
         '分析图片中的记账信息，提取：1.微信/支付宝付款记录：金额、收款人、备注，并从收款人分析记账类别；2.订单截图（美团/淘宝/京东/外卖/抖音）：内容、金额、时间、收件人；3.发票/票据：内容、分类、金额、时间。返回JSON格式。';
@@ -576,7 +574,7 @@ export class MultimodalAIController {
    */
   async getStatus(req: Request, res: Response): Promise<void> {
     try {
-      const config = await this.configService.getFullConfig();
+      const config = await multimodalAIConfigService.getFullConfig();
       
       res.json({
         success: true,

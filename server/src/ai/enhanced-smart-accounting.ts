@@ -10,7 +10,7 @@ import {
 } from './prompts/enhanced-accounting-prompts';
 import { SmartAccountingState } from './types/accounting-types';
 import { SmartAccountingResponse, SmartAccountingResult } from '../types/smart-accounting';
-import { MultimodalAIConfigService } from '../services/multimodal-ai-config.service';
+import multimodalAIConfigService from '../services/multimodal-ai-config.service';
 import {
   SmartAccountingPromptProcessor,
   SmartAccountingPromptVariables,
@@ -28,13 +28,11 @@ import { getLocalDateString } from '../utils/date-helpers';
  */
 export class EnhancedSmartAccounting {
   private llmProviderService: LLMProviderService;
-  private configService: MultimodalAIConfigService;
   private userAIConfigService: any;
   private cache: NodeCache;
 
   constructor(llmProviderService: LLMProviderService) {
     this.llmProviderService = llmProviderService;
-    this.configService = new MultimodalAIConfigService();
     this.userAIConfigService = userAISmartAccountingService;
     this.cache = new NodeCache({ stdTTL: 1800 }); // 30分钟过期
   }
@@ -125,12 +123,11 @@ export class EnhancedSmartAccounting {
    */
   private async analyzeTransactionWithCustomConfig(state: SmartAccountingState) {
     try {
-      // 获取用户自定义配置
-      const customPrompt = await this.userAIConfigService.getUserCustomPrompt(state.userId);
-      const customRules = await this.userAIConfigService.getUserClassificationRules(state.userId);
+      // 获取用户自定义配置（合并为一次查询）
+      const { customPrompt, customRules, categoryMappings } = await this.userAIConfigService.getAllUserConfig(state.userId);
 
       // 获取全局配置
-      const globalConfig = await this.configService.getFullConfig();
+      const globalConfig = await multimodalAIConfigService.getFullConfig();
 
       // 第一步：判断相关性
       const relevanceCheckTemplate = (globalConfig.smartAccounting.relevanceCheckPrompt && globalConfig.smartAccounting.relevanceCheckPrompt.trim()) ?
@@ -192,9 +189,6 @@ export class EnhancedSmartAccounting {
       // 获取预算列表
       const budgetListText = await this.getBudgetListForPrompt(state.userId, state.accountId || '');
       const budgetList = budgetListText ? `预算列表：\n${budgetListText}` : '';
-
-      // 获取用户分类映射
-      const categoryMappings = await this.userAIConfigService.getUserCategoryMappings(state.userId);
 
       // 构建提示词
       let systemPrompt = DEFAULT_SMART_ACCOUNTING_PROMPT;

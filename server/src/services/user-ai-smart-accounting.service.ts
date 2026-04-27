@@ -183,14 +183,14 @@ export class UserAISmartAccountingService {
       logger.info(`获取用户 ${userId} 的分类规则`);
 
       const configs = await prisma.$queryRaw`
-        SELECT 
+        SELECT
           id,
           config_key as "configKey",
           config_value as "configValue",
           description,
           is_enabled as "isEnabled"
         FROM user_ai_smart_accounting_configs
-        WHERE user_id = ${userId} 
+        WHERE user_id = ${userId}
           AND config_key = 'classification_rules'
           AND is_enabled = true
         LIMIT 1
@@ -199,6 +199,71 @@ export class UserAISmartAccountingService {
       return (configs as any[]).length > 0 ? (configs as any[])[0] : null;
     } catch (error) {
       logger.error('获取用户分类规则失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 合并获取用户的所有AI配置（减少数据库查询次数）
+   * @param userId 用户ID
+   * @returns 包含customPrompt、customRules和categoryMappings的对象
+   */
+  async getAllUserConfig(userId: string) {
+    try {
+      logger.info(`合并获取用户 ${userId} 的所有AI配置`);
+
+      // 并行查询三个配置（2个来自同一表，1个来自另一个表）
+      const [promptAndRulesConfigs, categoryMappings] = await Promise.all([
+        // 查询用户自定义提示词和分类规则（同一表）
+        prisma.$queryRaw`
+          SELECT
+            id,
+            config_key as "configKey",
+            config_value as "configValue",
+            config_type as "configType",
+            description,
+            is_enabled as "isEnabled"
+          FROM user_ai_smart_accounting_configs
+          WHERE user_id = ${userId}
+            AND (
+              (config_type = 'prompt' AND is_enabled = true)
+              OR config_key = 'classification_rules'
+            )
+          ORDER BY priority DESC
+        `,
+        // 查询用户分类映射规则（不同表）
+        prisma.$queryRaw`
+          SELECT
+            m.id,
+            m.user_id as "userId",
+            m.keyword,
+            m.category_id as "categoryId",
+            m.match_type as "matchType",
+            m.priority,
+            m.is_enabled as "isEnabled",
+            c.name as "categoryName",
+            c.icon as "categoryIcon",
+            c.type as "categoryType"
+          FROM user_category_mappings m
+          LEFT JOIN categories c ON m.category_id = c.id
+          WHERE m.user_id = ${userId} AND m.is_enabled = true
+          ORDER BY m.priority DESC, m.created_at ASC
+        `,
+      ]);
+
+      const configs = promptAndRulesConfigs as any[];
+
+      // 分离出customPrompt和customRules
+      const customPrompt = configs.find(c => c.configType === 'prompt') || null;
+      const customRules = configs.find(c => c.configKey === 'classification_rules') || null;
+
+      return {
+        customPrompt,
+        customRules,
+        categoryMappings: categoryMappings as any[],
+      };
+    } catch (error) {
+      logger.error('合并获取用户AI配置失败:', error);
       throw error;
     }
   }

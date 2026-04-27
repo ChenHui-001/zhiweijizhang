@@ -1,5 +1,5 @@
 import { logger } from '../../utils/logger';
-import { MultimodalAIConfigService } from '../../services/multimodal-ai-config.service';
+import multimodalAIConfigService from '../../services/multimodal-ai-config.service';
 import { SpeechRecognitionService } from '../../services/speech-recognition.service';
 import { VisionRecognitionService } from '../../services/vision-recognition.service';
 import {
@@ -14,12 +14,10 @@ import {
  * 管理员多模态AI配置服务
  */
 export class MultimodalAIAdminService {
-  private configService: MultimodalAIConfigService;
   private speechService: SpeechRecognitionService;
   private visionService: VisionRecognitionService;
 
   constructor() {
-    this.configService = new MultimodalAIConfigService();
     this.speechService = new SpeechRecognitionService();
     this.visionService = new VisionRecognitionService();
   }
@@ -29,7 +27,7 @@ export class MultimodalAIAdminService {
    */
   async getFullConfig(): Promise<FullMultimodalAIConfig> {
     try {
-      return await this.configService.getFullConfig();
+      return await multimodalAIConfigService.getFullConfig();
     } catch (error) {
       logger.error('获取多模态AI配置失败:', error);
       throw new Error('获取多模态AI配置失败');
@@ -41,7 +39,7 @@ export class MultimodalAIAdminService {
    */
   async updateSpeechConfig(config: Partial<SpeechRecognitionConfig>): Promise<void> {
     try {
-      await this.configService.updateSpeechConfig(config);
+      await multimodalAIConfigService.updateSpeechConfig(config);
     } catch (error) {
       logger.error('更新语音识别配置失败:', error);
       throw new Error('更新语音识别配置失败');
@@ -53,7 +51,7 @@ export class MultimodalAIAdminService {
    */
   async updateVisionConfig(config: Partial<VisionRecognitionConfig>): Promise<void> {
     try {
-      await this.configService.updateVisionConfig(config);
+      await multimodalAIConfigService.updateVisionConfig(config);
     } catch (error) {
       logger.error('更新视觉识别配置失败:', error);
       throw new Error('更新视觉识别配置失败');
@@ -76,7 +74,7 @@ export class MultimodalAIAdminService {
         message: isConnected ? '语音识别服务连接成功' : '语音识别服务连接失败',
         details: {
           timestamp: new Date().toISOString(),
-          provider: config?.provider || (await this.configService.getSpeechConfig()).provider,
+          provider: config?.provider || (await multimodalAIConfigService.getSpeechConfig()).provider,
         },
       };
     } catch (error) {
@@ -104,7 +102,7 @@ export class MultimodalAIAdminService {
         message: isConnected ? '视觉识别服务连接成功' : '视觉识别服务连接失败',
         details: {
           timestamp: new Date().toISOString(),
-          provider: config?.provider || (await this.configService.getVisionConfig()).provider,
+          provider: config?.provider || (await multimodalAIConfigService.getVisionConfig()).provider,
         },
       };
     } catch (error) {
@@ -231,7 +229,7 @@ export class MultimodalAIAdminService {
     };
   }> {
     try {
-      const config = await this.configService.getFullConfig();
+      const config = await multimodalAIConfigService.getFullConfig();
       
       // 检查语音识别状态
       let speechConfigured = false;
@@ -277,15 +275,15 @@ export class MultimodalAIAdminService {
       const updates: Promise<void>[] = [];
 
       if (config.speech) {
-        updates.push(this.configService.updateSpeechConfig(config.speech));
+        updates.push(multimodalAIConfigService.updateSpeechConfig(config.speech));
       }
 
       if (config.vision) {
-        updates.push(this.configService.updateVisionConfig(config.vision));
+        updates.push(multimodalAIConfigService.updateVisionConfig(config.vision));
       }
 
       if (config.smartAccounting) {
-        updates.push(this.configService.updateSmartAccountingConfig(config.smartAccounting));
+        updates.push(multimodalAIConfigService.updateSmartAccountingConfig(config.smartAccounting));
       }
 
       await Promise.all(updates);

@@ -29,38 +29,30 @@ interface AIServiceFormProps {
 }
 
 const providers = [
-  { value: 'openai', label: 'OpenAI', icon: '🤖', defaultUrl: 'https://api.openai.com/v1' },
-  { value: 'deepseek', label: 'DeepSeek', icon: '🔮', defaultUrl: 'https://api.deepseek.com' },
-  { value: 'siliconflow', label: '硅基流动', icon: '💧', defaultUrl: 'https://api.siliconflow.cn/v1' },
-  { value: 'zhipu', label: '智谱AI', icon: '🧠', defaultUrl: 'https://open.bigmodel.cn/api/paas/v4' },
-  { value: 'baidu', label: '文心一言', icon: '🌐', defaultUrl: 'https://qianfan.baidubce.com/v2' },
-  { value: 'dashscope', label: '通义千问', icon: '💬', defaultUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
-  { value: 'anthropic', label: 'Claude', icon: '🧬', defaultUrl: 'https://api.anthropic.com' },
-  { value: 'gemini', label: 'Gemini', icon: '✨', defaultUrl: 'https://generativelanguage.googleapis.com/v1beta' },
-  { value: 'ollama', label: 'Ollama', icon: '🏠', defaultUrl: 'http://localhost:11434/v1' },
-  { value: 'moonshot', label: 'Moonshot', icon: '🌙', defaultUrl: 'https://api.moonshot.cn/v1' },
-  { value: 'minimax', label: 'MiniMax', icon: '🎯', defaultUrl: 'https://api.minimax.chat/v1' },
-  { value: 'custom', label: '自定义', icon: '🔧', defaultUrl: '' },
+  { value: 'siliconflow', label: '硅基流动', icon: '💧', desc: '高性价比', defaultUrl: 'https://api.siliconflow.cn/v1' },
+  { value: 'deepseek', label: 'DeepSeek', icon: '🔮', desc: '深度求索', defaultUrl: 'https://api.deepseek.com/v1' },
+  { value: 'zhipu', label: '智谱AI', icon: '🧠', desc: '国产大模型', defaultUrl: 'https://open.bigmodel.cn/api/paas/v4' },
+  { value: 'baidu', label: '文心一言', icon: '🌐', desc: '百度ERNIE', defaultUrl: 'https://qianfan.baidubce.com/v2' },
+  { value: 'dashscope', label: '通义千问', icon: '💬', desc: '阿里云', defaultUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
+  { value: 'anthropic', label: 'Claude', icon: '🧬', desc: 'Anthropic', defaultUrl: 'https://api.anthropic.com/v1' },
+  { value: 'gemini', label: 'Gemini', icon: '✨', desc: 'Google', defaultUrl: 'https://generativelanguage.googleapis.com/v1beta' },
+  { value: 'moonshot', label: 'Moonshot', icon: '🌙', desc: '月之暗面', defaultUrl: 'https://api.moonshot.cn/v1' },
+  { value: 'ollama', label: 'Ollama', icon: '🏠', desc: '本地部署', defaultUrl: 'http://localhost:11434/v1' },
+  { value: 'minimax', label: 'MiniMax', icon: '🎯', desc: '海螺AI', defaultUrl: 'https://api.minimax.chat/v1' },
+  { value: 'custom', label: '自定义', icon: '🔧', desc: '其他API', defaultUrl: '' },
 ];
 
 const getModelOptions = (provider: string) => {
   const models: Record<string, Array<{value: string; label: string}>> = {
-    openai: [
-      { value: 'gpt-4o', label: 'GPT-4o' },
-      { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-      { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-      { value: 'gpt-4', label: 'GPT-4' },
-      { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-    ],
-    deepseek: [
-      { value: 'deepseek-chat', label: 'DeepSeek V3' },
-      { value: 'deepseek-coder', label: 'DeepSeek Coder' },
-    ],
     siliconflow: [
       { value: 'Qwen/Qwen2.5-72B-Instruct', label: 'Qwen2.5-72B' },
       { value: 'Qwen/Qwen2.5-32B-Instruct', label: 'Qwen2.5-32B' },
       { value: 'deepseek-ai/DeepSeek-V2.5', label: 'DeepSeek-V2.5' },
       { value: 'THUDM/glm-4-9b-chat', label: 'GLM-4-9B' },
+    ],
+    deepseek: [
+      { value: 'deepseek-chat', label: 'DeepSeek V3' },
+      { value: 'deepseek-coder', label: 'DeepSeek Coder' },
     ],
     zhipu: [
       { value: 'glm-4-flash', label: 'GLM-4-Flash' },
@@ -70,7 +62,7 @@ const getModelOptions = (provider: string) => {
     baidu: [
       { value: 'ernie-4.0-8k-latest', label: 'ERNIE-4.0' },
       { value: 'ernie-3.5-8k', label: 'ERNIE-3.5' },
-      { value: 'ernie-lite-8k', label: 'ERNIE-Lite (免费)' },
+      { value: 'ernie-lite-8k', label: 'ERNIE-Lite' },
     ],
     dashscope: [
       { value: 'qwen-max', label: 'Qwen-Max' },
@@ -81,7 +73,6 @@ const getModelOptions = (provider: string) => {
     anthropic: [
       { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
       { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus' },
-      { value: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet' },
     ],
     gemini: [
       { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
@@ -146,7 +137,7 @@ export function AIServiceForm({
       const models = getModelOptions(initialData.provider);
       const isCustom = models.length === 0 || !models.some(m => m.value === initialData.model);
       setShowCustomModel(isCustom);
-      
+
       const provider = providers.find(p => p.value === initialData.provider);
       const isUrlCustom = Boolean(!provider?.defaultUrl ||
         (initialData.baseUrl && initialData.baseUrl !== provider?.defaultUrl));
@@ -158,18 +149,18 @@ export function AIServiceForm({
     return providers.find(p => p.value === provider)?.defaultUrl || '';
   };
 
-  const handleProviderSelect = (provider: string) => {
-    setValue('provider', provider);
-    const models = getModelOptions(provider);
-    const providerInfo = providers.find(p => p.value === provider);
-    
+  const handleProviderSelect = (providerValue: string) => {
+    setValue('provider', providerValue);
+    const models = getModelOptions(providerValue);
+    const providerInfo = providers.find(p => p.value === providerValue);
+
     setShowCustomModel(models.length === 0);
     setShowCustomUrl(!providerInfo?.defaultUrl);
-    
+
     if (providerInfo?.defaultUrl) {
       setValue('baseUrl', providerInfo.defaultUrl);
     }
-    
+
     if (models.length > 0) {
       setValue('model', models[0].value);
     } else {
@@ -251,65 +242,92 @@ export function AIServiceForm({
   const hasPresetModels = modelOptions.length > 0;
   const providerInfo = providers.find(p => p.value === selectedProvider);
   const hasDefaultUrl = !!providerInfo?.defaultUrl;
+  const selectedProviderInfo = providers.find(p => p.value === selectedProvider);
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="mobile-form">
+      {/* 提供商选择 - 卡片式 */}
       <div className="form-section">
-        <label className="section-label">服务商</label>
-        <select
-          value={selectedProvider}
-          onChange={(e) => handleProviderSelect(e.target.value)}
-          className="form-select provider-select"
-        >
-          <option value="">请选择服务商</option>
+        <label className="section-label">选择服务商</label>
+        <div className="provider-grid">
           {providers.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.icon} {p.label}
-            </option>
+            <div
+              key={p.value}
+              className={`provider-card ${selectedProvider === p.value ? 'selected' : ''}`}
+              onClick={() => handleProviderSelect(p.value)}
+            >
+              <span className="provider-icon">{p.icon}</span>
+              <span className="provider-name">{p.label}</span>
+              <span className="provider-desc">{p.desc}</span>
+            </div>
           ))}
-        </select>
+        </div>
       </div>
 
+      {/* 选中的提供商信息 */}
+      {selectedProvider && selectedProviderInfo && (
+        <div className="selected-provider-info">
+          <span className="selected-provider-icon">{selectedProviderInfo.icon}</span>
+          <div className="selected-provider-details">
+            <div className="selected-provider-name">{selectedProviderInfo.label}</div>
+            <div className="selected-provider-model">
+              {providerInfo?.defaultUrl || '需要配置API地址'}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 服务名称 */}
       <div className="form-section">
         <label className="section-label">服务名称</label>
         <input
           type="text"
           {...register('name')}
-          placeholder="例如：我的OpenAI"
+          placeholder="例如：我的硅基流动"
           className="form-input"
         />
+        {errors.name && <span style={{color: 'red', fontSize: '12px'}}>{errors.name.message}</span>}
       </div>
 
+      {/* 模型选择 */}
       <div className="form-section">
-        <label className="section-label">模型</label>
+        <label className="section-label">选择模型</label>
         {hasPresetModels && !showCustomModel ? (
-          <div className="model-section">
-            <select {...register('model')} className="form-select">
+          <>
+            <div className="model-grid">
               {modelOptions.map((m) => (
-                <option key={m.value} value={m.value}>{m.label}</option>
+                <div
+                  key={m.value}
+                  className={`model-chip ${selectedModel === m.value ? 'selected' : ''}`}
+                  onClick={() => handleModelSelect(m.value)}
+                >
+                  {m.label}
+                </div>
               ))}
-            </select>
+            </div>
             <button type="button" onClick={handleCustomModelToggle} className="link-btn">
               + 自定义模型
             </button>
-          </div>
+          </>
         ) : (
-          <div className="model-section">
+          <>
             <input
               type="text"
               {...register('model')}
-              placeholder="输入模型名称，如 gpt-4"
+              placeholder="输入模型名称"
               className="form-input"
             />
+            {errors.model && <span style={{color: 'red', fontSize: '12px'}}>{errors.model.message}</span>}
             {hasPresetModels && (
               <button type="button" onClick={handleCustomModelToggle} className="link-btn">
                 ← 选择预设模型
               </button>
             )}
-          </div>
+          </>
         )}
       </div>
 
+      {/* API密钥 */}
       <div className="form-section">
         <label className="section-label">API密钥</label>
         <input
@@ -318,19 +336,23 @@ export function AIServiceForm({
           placeholder="输入API密钥"
           className="form-input"
         />
+        {errors.apiKey && <span style={{color: 'red', fontSize: '12px'}}>{errors.apiKey.message}</span>}
       </div>
 
+      {/* API地址 */}
       <div className="form-section">
-        <label className="section-label">API地址 {hasDefaultUrl && !showCustomUrl && <span className="label-hint">(默认)</span>}</label>
+        <label className="section-label">
+          API地址 {hasDefaultUrl && !showCustomUrl && <span className="label-hint">(默认)</span>}
+        </label>
         {hasDefaultUrl && !showCustomUrl ? (
-          <div className="url-section">
+          <>
             <div className="url-preview">{currentBaseUrl || getDefaultUrl(selectedProvider)}</div>
             <button type="button" onClick={handleCustomUrlToggle} className="link-btn">
               + 自定义地址
             </button>
-          </div>
+          </>
         ) : (
-          <div className="url-section">
+          <>
             <input
               type="text"
               {...register('baseUrl')}
@@ -342,10 +364,11 @@ export function AIServiceForm({
                 ← 使用默认地址
               </button>
             )}
-          </div>
+          </>
         )}
       </div>
 
+      {/* 高级设置 */}
       <button type="button" onClick={() => setShowAdvanced(!showAdvanced)} className="advanced-toggle">
         {showAdvanced ? '▲ 收起高级设置' : '▼ 高级设置'}
       </button>
@@ -369,6 +392,7 @@ export function AIServiceForm({
         </div>
       )}
 
+      {/* 测试连接 */}
       <div className="test-section">
         <button type="button" onClick={testConnection} disabled={testing} className="test-btn">
           {testing ? '测试中...' : '测试连接'}
@@ -380,6 +404,7 @@ export function AIServiceForm({
         )}
       </div>
 
+      {/* 操作按钮 */}
       <div className="action-section">
         <button type="button" onClick={onCancel} disabled={isSubmitting} className="cancel-btn">
           取消

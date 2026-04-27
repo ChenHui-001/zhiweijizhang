@@ -10,7 +10,7 @@ import {
   MultimodalAIErrorType,
   SpeechRecognitionConfig,
 } from '../models/multimodal-ai.model';
-import { MultimodalAIConfigService } from './multimodal-ai-config.service';
+import multimodalAIConfigService from './multimodal-ai-config.service';
 import { BaiduSpeechRecognitionService } from './speech-recognition-baidu.service';
 
 /**
@@ -18,11 +18,9 @@ import { BaiduSpeechRecognitionService } from './speech-recognition-baidu.servic
  * 支持多种语音识别提供商
  */
 export class SpeechRecognitionService {
-  private configService: MultimodalAIConfigService;
   private baiduService: BaiduSpeechRecognitionService;
 
   constructor() {
-    this.configService = new MultimodalAIConfigService();
     this.baiduService = new BaiduSpeechRecognitionService();
   }
 
@@ -54,7 +52,7 @@ export class SpeechRecognitionService {
 
     try {
       // 获取配置
-      const config = await this.configService.getSpeechConfig();
+      const config = await multimodalAIConfigService.getSpeechConfig();
       
       // 检查功能是否启用
       if (!config.enabled) {
@@ -110,8 +108,8 @@ export class SpeechRecognitionService {
   async testConnection(config?: Partial<SpeechRecognitionConfig>): Promise<boolean> {
     try {
       const speechConfig = config 
-        ? { ...await this.configService.getSpeechConfig(), ...config }
-        : await this.configService.getSpeechConfig();
+        ? { ...await multimodalAIConfigService.getSpeechConfig(), ...config }
+        : await multimodalAIConfigService.getSpeechConfig();
 
       if (!speechConfig.enabled) {
         return false;
@@ -343,7 +341,7 @@ export class SpeechRecognitionService {
    * 获取支持的音频格式
    */
   async getSupportedFormats(): Promise<string[]> {
-    const config = await this.configService.getSpeechConfig();
+    const config = await multimodalAIConfigService.getSpeechConfig();
     return config.allowedFormats;
   }
 
@@ -351,7 +349,7 @@ export class SpeechRecognitionService {
    * 获取最大文件大小
    */
   async getMaxFileSize(): Promise<number> {
-    const config = await this.configService.getSpeechConfig();
+    const config = await multimodalAIConfigService.getSpeechConfig();
     return config.maxFileSize;
   }
 }

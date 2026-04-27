@@ -6,7 +6,7 @@ import {
 } from '../prompts/accounting-prompts';
 import { SmartAccountingState } from '../types/accounting-types';
 import { SmartAccountingResponse } from '../../types/smart-accounting';
-import { MultimodalAIConfigService } from '../../services/multimodal-ai-config.service';
+import multimodalAIConfigService from '../../services/multimodal-ai-config.service';
 import {
   SmartAccountingPromptProcessor,
   SmartAccountingPromptVariables,
@@ -24,7 +24,6 @@ import { getLocalDateString } from '../../utils/date-helpers';
  */
 export class SmartAccounting {
   private llmProviderService: LLMProviderService;
-  private configService: MultimodalAIConfigService;
   private cache: NodeCache;
 
   /**
@@ -36,7 +35,6 @@ export class SmartAccounting {
     dotenv.config();
 
     this.llmProviderService = llmProviderService;
-    this.configService = new MultimodalAIConfigService();
     this.cache = new NodeCache({ stdTTL: 3600 }); // 1小时过期
   }
 
@@ -204,6 +202,21 @@ export class SmartAccounting {
         },
       });
 
+      // 批量获取所有需要的用户信息（修复N+1查询问题）
+      const userIds = [...new Set(activeBudgets
+        .filter(b => b.userId && !b.familyMemberId)
+        .map(b => b.userId)
+        .filter((id): id is string => id !== null))];
+
+      const usersMap = new Map<string, string>();
+      if (userIds.length > 0) {
+        const users = await prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true },
+        });
+        users.forEach(u => usersMap.set(u.id, u.name));
+      }
+
       // 处理预算信息
       for (const budget of activeBudgets) {
         let budgetDisplayName = budget.name;
@@ -218,14 +231,8 @@ export class SmartAccounting {
             // 托管成员预算
             budgetDisplayName = budget.familyMember.user?.name || budget.familyMember.name;
           } else if (budget.userId) {
-            // 家庭成员预算或个人预算
-            const user = await prisma.user.findUnique({
-              where: { id: budget.userId },
-              select: { name: true },
-            });
-            if (user) {
-              budgetDisplayName = user.name;
-            }
+            // 使用批量查询的用户信息
+            budgetDisplayName = usersMap.get(budget.userId) || budget.name;
           }
         }
 
@@ -240,99 +247,187 @@ export class SmartAccounting {
   }
 
   /**
+   * 获取预算列表用于内存匹配（返回预算数据）
+   * @param userId 用户ID
+   * @param accountId 账本ID
+   * @returns 活跃预算数组
+   */
+  private async getActiveBudgetsForMatching(userId: string, accountId: string): Promise<any[]> {
+    try {
+      // 获取当前账本信息
+      const accountBook = await prisma.accountBook.findUnique({
+        where: { id: accountId },
+        include: {
+          family: {
+            include: {
+              members: {
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!accountBook) {
+        return [];
+      }
+
+      const currentDate = new Date();
+
+      // 获取当前活跃的预算
+      const activeBudgets = await prisma.budget.findMany({
+        where: {
+          OR: [
+            // 账本预算
+            {
+              accountBookId: accountId,
+              startDate: { lte: currentDate },
+              endDate: { gte: currentDate },
+            },
+            // 用户个人预算
+            {
+              userId: userId,
+              startDate: { lte: currentDate },
+              endDate: { gte: currentDate },
+            },
+            // 家庭预算（如果是家庭账本）
+            ...(accountBook.familyId
+              ? [
+                  {
+                    familyId: accountBook.familyId,
+                    startDate: { lte: currentDate },
+                    endDate: { gte: currentDate },
+                  },
+                ]
+              : []),
+          ],
+        },
+      });
+
+      return activeBudgets;
+    } catch (error) {
+      logger.error('获取预算列表失败:', error);
+      return [];
+    }
+  }
+
+  /**
+   * 在内存中匹配预算
+   * @param transaction 交易记录
+   * @param budgets 预算数组
+   * @param userId 用户ID
+   * @returns 匹配的预算或null
+   */
+  private matchBudgetInMemory(transaction: any, budgets: any[], userId: string): any | null {
+    // 如果LLM识别出了预算名称，优先根据预算名称匹配
+    if (transaction.budgetName) {
+      const matchedByName = budgets.find(b =>
+        b.name.toLowerCase().includes(transaction.budgetName.toLowerCase()) ||
+        transaction.budgetName.toLowerCase().includes(b.name.toLowerCase())
+      );
+      if (matchedByName) {
+        logger.info(`✅ [预算匹配] 根据预算名称匹配: ${matchedByName.id} - ${matchedByName.name}`);
+        return matchedByName;
+      }
+    }
+
+    // 匹配逻辑优先级：
+    // 1. 请求发起人在当前账本的个人预算（排除托管成员预算）
+    // 2. 当前账本的分类预算
+    // 3. 当前账本的通用预算（不限分类）
+
+    // 1. 首先尝试用户个人预算
+    const personalBudget = budgets.find(b =>
+      b.userId === userId &&
+      b.budgetType === 'PERSONAL' &&
+      !b.familyMemberId &&
+      (!b.categoryId || b.categoryId === transaction.categoryId) &&
+      new Date(b.startDate) <= transaction.date &&
+      new Date(b.endDate) >= transaction.date
+    );
+
+    if (personalBudget) {
+      logger.info(`✅ [预算匹配] 找到用户个人预算: ${personalBudget.id} - ${personalBudget.name}`);
+      return personalBudget;
+    }
+
+    // 2. 尝试账本分类预算
+    const categoryBudget = budgets.find(b =>
+      b.accountBookId === transaction.accountBookId &&
+      b.categoryId === transaction.categoryId &&
+      new Date(b.startDate) <= transaction.date &&
+      new Date(b.endDate) >= transaction.date
+    );
+
+    if (categoryBudget) {
+      logger.info(`✅ [预算匹配] 找到账本分类预算: ${categoryBudget.id} - ${categoryBudget.name}`);
+      return categoryBudget;
+    }
+
+    // 3. 尝试账本通用预算
+    const generalBudget = budgets.find(b =>
+      b.accountBookId === transaction.accountBookId &&
+      !b.categoryId &&
+      new Date(b.startDate) <= transaction.date &&
+      new Date(b.endDate) >= transaction.date
+    );
+
+    if (generalBudget) {
+      logger.info(`✅ [预算匹配] 找到账本通用预算: ${generalBudget.id} - ${generalBudget.name}`);
+      return generalBudget;
+    }
+
+    logger.info(`❌ [预算匹配] 未找到匹配预算`);
+    return null;
+  }
+
+  /**
    * 智能分析节点 - 合并了实体提取和分类匹配
    * @param state 工作流状态
    * @returns 更新后的工作流状态
    */
   private async analyzeTransactionHandler(state: SmartAccountingState) {
     try {
-      // 获取配置的提示词
-      const config = await this.configService.getFullConfig();
-      
-      // 第一步：判断请求内容是否与记账相关
-      // 使用数据库配置的提示词，如果配置为空字符串或null，则使用默认提示词
-      const relevanceCheckTemplate = (config.smartAccounting.relevanceCheckPrompt && config.smartAccounting.relevanceCheckPrompt.trim()) ? 
-        config.smartAccounting.relevanceCheckPrompt : 
-        `你是一个专业的财务助手。请判断以下用户描述是否与记账相关。
+      // 并行获取所有需要的数据（优化性能）
+      const [config, categories, budgetListText, activeBudgets] = await Promise.all([
+        multimodalAIConfigService.getFullConfig(),
+        prisma.category.findMany({
+          where: {
+            OR: [{ userId: state.userId }, { isDefault: true }, { accountBookId: state.accountId }],
+          },
+        }),
+        this.getBudgetListForPrompt(state.userId, state.accountId || ''),
+        this.getActiveBudgetsForMatching(state.userId, state.accountId || ''),
+      ]);
 
-判断标准：
-1. 包含金额信息（必须）
-2. 包含记账流水明细（必须）
-3. 可能包含日期信息（可选）
-4. 可能包含预算信息（可选）
+      // 使用已有的categories构建简化的分类列表（避免重复查询）
+      const categoryList = categories
+        .map((c: any) => `${c.id}:${c.name}(${c.type === 'EXPENSE' ? '支出' : '收入'})`)
+        .join(',');
 
-如果描述中包含明确的金额和记账内容（如购买、支付、收入、转账等），则判定为与记账相关。
-如果描述中只是询问、闲聊或其他非记账相关内容，则判定为与记账无关。
-
-请只回答 "相关" 或 "无关"，不要有其他文字。
-
-用户描述: {{description}}`;
-
-      // 使用工具函数替换占位符
-      const relevanceVariables: RelevanceCheckPromptVariables = {
-        description: state.description
-      };
-      const relevanceCheckPrompt = SmartAccountingPromptProcessor.processRelevanceCheckPrompt(
-        relevanceCheckTemplate,
-        relevanceVariables
-      );
-
-      const relevanceResponse = await this.llmProviderService.generateChat(
-        [
-          { role: 'system', content: '你是一个专业的财务助手，负责判断用户描述是否与记账相关。' },
-          { role: 'user', content: relevanceCheckPrompt },
-        ],
-        state.userId,
-        state.accountId,
-        state.accountType,
-        state.source,
-      );
-
-      const relevanceResult = relevanceResponse.trim();
-
-      // 如果内容与记账无关，直接返回错误
-      if (relevanceResult.includes('无关')) {
-        return {
-          ...state,
-          error: '消息与记账无关',
-        };
-      }
-
-      // 获取所有分类
-      const categories = await prisma.category.findMany({
-        where: {
-          OR: [{ userId: state.userId }, { isDefault: true }, { accountBookId: state.accountId }],
-        },
-      });
-
-      // 使用简化的分类列表
-      const categoryList = await this.getSimplifiedCategoryListForPrompt(
-        state.userId,
-        state.accountId || '',
-      );
-
-      // 始终获取预算列表（不再“按需”获取）
-      const budgetListText = await this.getBudgetListForPrompt(state.userId, state.accountId || '');
       const budgetList = budgetListText ? `预算列表：\n${budgetListText}` : '';
-      
+
       logger.info('📊 [预算信息] 获取预算列表:', {
         hasPrebudget: !!budgetListText,
         budgetCount: budgetListText.split('\n').filter(line => line.trim()).length,
-        budgetPreview: budgetListText.substring(0, 200) + (budgetListText.length > 200 ? '...' : '')
       });
 
       // 准备提示词 - 使用配置的提示词，如果配置为空字符串或null，则使用默认提示词
       const currentDate = getLocalDateString();
-      const smartAccountingTemplate = (config.smartAccounting.smartAccountingPrompt && config.smartAccounting.smartAccountingPrompt.trim()) ? 
-        config.smartAccounting.smartAccountingPrompt : 
+      // 优先使用数据库配置的提示词，否则使用合并了相关性判断的新版提示词
+      const smartAccountingTemplate = (config.smartAccounting.smartAccountingPrompt && config.smartAccounting.smartAccountingPrompt.trim()) ?
+        config.smartAccounting.smartAccountingPrompt :
         SMART_ACCOUNTING_SYSTEM_PROMPT;
-      
-      logger.info('🔧 [智能记账] 使用的提示词模板:', {
-        isFromDatabase: !!(config.smartAccounting.smartAccountingPrompt && config.smartAccounting.smartAccountingPrompt.trim()),
-        templateLength: smartAccountingTemplate.length,
-        templatePreview: smartAccountingTemplate.substring(0, 100) + '...'
-      });
-      
+
+      logger.info('🔧 [智能记账] 使用合并的提示词（单次LLM调用同时处理相关性和分析）');
+
       // 使用工具函数替换占位符
       const smartAccountingVariables: SmartAccountingPromptVariables = {
         description: state.description,
@@ -345,10 +440,9 @@ export class SmartAccounting {
         smartAccountingVariables
       );
 
-      // 使用配置的提示词或默认提示词
       const userPrompt = `用户描述: ${state.description}\n当前日期: ${currentDate}`;
 
-      // 调用LLM
+      // 合并为单次LLM调用，同时处理相关性和智能记账分析
       const response = await this.llmProviderService.generateChat(
         [
           { role: 'system', content: systemPrompt },
@@ -360,23 +454,32 @@ export class SmartAccounting {
         state.source,
       );
 
-      // 解析响应 - 支持单个对象 {...} 和数组格式 [{...}, {...}, {...}]
+      // 解析响应
       const extracted = extractJsonFromResponse(response);
 
       if (extracted) {
         const parsedResult = JSON.parse(extracted.json);
+
+        // 检查是否与记账相关（新增的合并逻辑）
+        if (parsedResult.isRelevant === false) {
+          return {
+            ...state,
+            error: parsedResult.reason || '消息与记账无关',
+          };
+        }
+
         const isArrayFormat = extracted.isArray;
-        
+
         // 统一处理为数组格式
         const transactions = isArrayFormat ? parsedResult : [parsedResult];
-        
+
         // 处理每个交易记录
         for (let i = 0; i < transactions.length; i++) {
           const analyzedTransaction = transactions[i];
 
           // 处理日期 - 修复时区问题
           if (analyzedTransaction.date) {
-            // 如果LLM返回的是日期字符串（如 "2025-12-12"），需要转换为本地时区的日期对象
+            // 如果LLM返回的是日期字符串（如 “2025-12-12”），需要转换为本地时区的日期对象
             const dateStr = analyzedTransaction.date;
             if (typeof dateStr === 'string') {
               // 检查是否是纯日期格式（YYYY-MM-DD）
@@ -427,14 +530,15 @@ export class SmartAccounting {
             logger.warn(`第 ${i + 1} 条记录的分类ID无效，使用默认分类: ${defaultCategory.name}`);
           }
 
-          // 为每条记录进行简单的预算匹配
+          // 为每条记录进行简单的预算匹配（使用内存匹配，避免DB查询）
           logger.info(`🎯 [预算匹配] 为第 ${i + 1} 条记录匹配预算`);
-          const matchedBudget = await this.findBestBudgetForTransaction(
+          analyzedTransaction.accountBookId = state.accountId; // 用于内存匹配
+          const matchedBudget = this.matchBudgetInMemory(
             analyzedTransaction,
-            state.userId,
-            state.accountId || ''
+            activeBudgets,
+            state.userId
           );
-          
+
           if (matchedBudget) {
             analyzedTransaction.budgetId = matchedBudget.id;
             logger.info(`✅ [预算匹配] 第 ${i + 1} 条记录匹配预算: ${matchedBudget.name}`);

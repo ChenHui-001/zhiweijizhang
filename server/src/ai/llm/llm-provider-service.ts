@@ -29,6 +29,19 @@ export class LLMProviderService {
     temperature: 0.7,
     maxTokens: 1000,
   };
+  /** LLM日志异步写入队列 */
+  private logQueue: any[] = [];
+  private isProcessingLog = false;
+  private readonly LOG_BATCH_SIZE = 10;
+  private readonly LOG_PROCESS_INTERVAL = 2000; // 2秒
+  /** 重试队列（失败后重试） */
+  private retryQueue: any[] = [];
+  private readonly MAX_RETRY_ATTEMPTS = 3;
+  private readonly RETRY_DELAY_MS = 5000; // 5秒后重试
+
+  /** LLM设置缓存（1分钟TTL） */
+  private llmSettingsCache: Map<string, { settings: LLMSettings; expire: number }> = new Map();
+  private readonly LLM_SETTINGS_CACHE_TTL = 60 * 1000; // 1分钟
 
   /** 获取多提供商服务实例（延迟加载） */
   public get multiProviderService(): MultiProviderLLMService {
@@ -154,7 +167,7 @@ export class LLMProviderService {
   }
 
   /**
-   * 获取用户或账本的LLM设置
+   * 获取用户或账本的LLM设置（带缓存）
    * @param userId 用户ID
    * @param accountId 账本ID (可选)
    * @param accountType 账本类型 (可选)
@@ -165,9 +178,39 @@ export class LLMProviderService {
     accountId?: string,
     accountType?: 'personal' | 'family',
   ): Promise<LLMSettings> {
+    // 生成缓存键
+    const cacheKey = `llm_settings:${userId}:${accountId || 'no_account'}`;
+
+    // 检查缓存
+    const now = Date.now();
+    const cached = this.llmSettingsCache.get(cacheKey);
+    if (cached && cached.expire > now) {
+      logger.debug(`✅ [LLM设置缓存命中] userId: ${userId}, accountId: ${accountId}`);
+      return cached.settings;
+    }
+
+    // 缓存未命中，从数据库获取
+    const settings = await this.fetchLLMSettingsFromDB(userId, accountId);
+
+    // 更新缓存
+    this.llmSettingsCache.set(cacheKey, {
+      settings,
+      expire: now + this.LLM_SETTINGS_CACHE_TTL,
+    });
+
+    return settings;
+  }
+
+  /**
+   * 从数据库获取LLM设置
+   */
+  private async fetchLLMSettingsFromDB(
+    userId: string,
+    accountId?: string,
+  ): Promise<LLMSettings> {
     try {
       logger.debug(
-        `🔍 [调试] getLLMSettings调用 - userId: ${userId}, accountId: ${accountId}, accountType: ${accountType}`,
+        `🔍 [调试] fetchLLMSettingsFromDB调用 - userId: ${userId}, accountId: ${accountId}`,
       );
 
       // 🔥 强制使用自定义AI服务，移除官方AI和多提供商模式
@@ -235,6 +278,14 @@ export class LLMProviderService {
       logger.error('获取LLM设置错误:', error);
       throw error;
     }
+  }
+
+  /**
+   * 清除LLM设置缓存
+   */
+  public clearLLMSettingsCache(): void {
+    this.llmSettingsCache.clear();
+    logger.info('🗑️ LLM设置缓存已清除');
   }
 
   /**
@@ -455,7 +506,7 @@ export class LLMProviderService {
       throw error;
     } finally {
       const duration = Date.now() - startTime;
-      await this.logLLMCall({
+      this.logLLMCallAsync({
         userId,
         accountId,
         provider: settings.provider,
@@ -571,7 +622,7 @@ export class LLMProviderService {
     } finally {
       const duration = Date.now() - startTime;
 
-      await this.logLLMCall({
+      this.logLLMCallAsync({
         userId,
         accountId,
         provider: settings.provider,
@@ -754,10 +805,10 @@ export class LLMProviderService {
   }
 
   /**
-   * 记录LLM调用日志
+   * 异步记录LLM调用日志（不阻塞主流程）
    * @param logData 日志数据
    */
-  private async logLLMCall(logData: {
+  private logLLMCallAsync(logData: {
     userId: string;
     accountId?: string;
     provider: string;
@@ -772,110 +823,134 @@ export class LLMProviderService {
     completionTokens: number;
     serviceType?: string;
     source?: 'App' | 'WeChat' | 'API';
-  }): Promise<void> {
-    try {
-      // 获取用户信息
-      const user = await prisma.user.findUnique({
-        where: { id: logData.userId },
-        select: { name: true },
-      });
+  }): void {
+    // 将日志放入队列，不等待
+    this.logQueue.push(logData);
+    this.processLogQueue();
+  }
 
-      // 获取账本信息（如果提供了accountId）
-      let accountBook = null;
-      if (logData.accountId) {
-        accountBook = await prisma.accountBook.findUnique({
-          where: { id: logData.accountId },
-          select: { name: true },
-        });
-      }
+  /**
+   * 处理日志队列（批量写入）
+   */
+  private async processLogQueue(): Promise<void> {
+    // 避免重复处理
+    if (this.isProcessingLog) {
+      return;
+    }
 
-      // 计算总token数
-      const totalTokens = logData.promptTokens + logData.completionTokens;
-
-      // 计算成本（这里可以根据不同提供商的定价模型来计算）
-      const cost = this.calculateCost(
-        logData.provider,
-        logData.model,
-        logData.promptTokens,
-        logData.completionTokens,
-      );
-
-      // 确定服务类型：如果没有明确指定，则根据用户级别的AI服务类型配置来判断
-      let serviceType = logData.serviceType;
-      if (!serviceType) {
-        try {
-          // 先尝试获取用户级别的AI服务类型配置
-          const userServiceTypeSetting = await prisma.userSetting.findUnique({
-            where: {
-              userId_key: {
-                userId: logData.userId,
-                key: 'ai_service_type',
-              },
-            },
-          });
-
-          if (userServiceTypeSetting?.value === 'custom') {
-            serviceType = 'custom';
-          } else {
-            // 如果用户选择了官方服务，检查是否使用多提供商配置
-            const multiProviderConfig = await this.multiProviderService.loadMultiProviderConfig();
-            if (multiProviderConfig?.enabled && multiProviderConfig.providers.length > 0) {
-              // 检查当前提供商/模型是否匹配多提供商中的某个配置
-              const isMultiProvider = multiProviderConfig.providers.some(
-                (p) => p.enabled && p.provider === logData.provider && p.model === logData.model,
-              );
-              if (isMultiProvider) {
-                serviceType = 'multi-provider';
-              } else {
-                serviceType = 'official';
-              }
-            } else {
-              serviceType = 'official';
-            }
-          }
-        } catch (error) {
-          logger.error('确定服务类型失败:', error);
-          // 兜底逻辑：检查全局配置
-          const globalConfig = await this.getGlobalLLMConfig();
-          if (globalConfig.enabled) {
-            serviceType = 'official';
-          } else {
-            serviceType = 'custom';
-          }
+    // 优先处理重试队列
+    if (this.retryQueue.length > 0) {
+      this.isProcessingLog = true;
+      let retryBatch: any[] = [];
+      try {
+        // 从重试队列取出
+        retryBatch = this.retryQueue.splice(0, this.LOG_BATCH_SIZE);
+        await this.executeBatchWrite(retryBatch, 1);
+        logger.debug(`LLM调用日志重试写入完成: ${retryBatch.length} 条`);
+      } catch (error) {
+        logger.error('处理重试队列失败，将批次放回队列:', error);
+        // 重试失败后，将批次放回重试队列，稍后重试
+        if (retryBatch.length > 0) {
+          this.retryQueue.unshift(...retryBatch);
+        }
+        // 延迟后继续重试
+        setTimeout(() => this.processLogQueue(), this.RETRY_DELAY_MS);
+        return;
+      } finally {
+        this.isProcessingLog = false;
+        // 重试后继续处理主队列
+        if (this.logQueue.length > 0) {
+          setTimeout(() => this.processLogQueue(), this.LOG_PROCESS_INTERVAL);
         }
       }
+      return;
+    }
 
-      // 创建日志记录
-      await prisma.llmCallLog.create({
-        data: {
-          userId: logData.userId,
-          userName: user?.name || 'Unknown User',
-          accountBookId: logData.accountId || null,
-          accountBookName: accountBook?.name || null,
-          provider: logData.provider,
-          model: logData.model,
-          source: logData.source || 'App',
-          aiServiceType: 'llm',
-          serviceType: serviceType,
-          promptTokens: logData.promptTokens,
-          completionTokens: logData.completionTokens,
-          totalTokens: totalTokens,
-          userMessage: logData.userMessage,
-          assistantMessage: logData.assistantMessage,
-          systemPrompt: logData.systemPrompt,
-          isSuccess: logData.isSuccess,
-          errorMessage: logData.errorMessage,
-          duration: logData.duration,
-          cost: cost,
-        },
-      });
+    if (this.logQueue.length === 0) {
+      return;
+    }
 
-      logger.info(
-        `LLM调用日志已记录: ${logData.provider}/${logData.model}, tokens: ${totalTokens}, duration: ${logData.duration}ms, serviceType: ${serviceType}`,
-      );
+    this.isProcessingLog = true;
+    let batch: any[] = [];
+
+    try {
+      // 批量处理日志
+      batch = this.logQueue.splice(0, this.LOG_BATCH_SIZE);
+      await this.executeBatchWrite(batch, 0);
+
+      logger.debug(`LLM调用日志批量写入完成: ${batch.length} 条`);
     } catch (error) {
-      logger.error('记录LLM调用日志失败:', error);
-      // 不抛出错误，避免影响主要功能
+      logger.error('批量处理LLM日志失败，将批次加入重试队列:', error);
+      // 失败时将批次加入重试队列
+      if (batch.length > 0) {
+        this.retryQueue.push(...batch);
+      }
+      // 延迟后重试
+      setTimeout(() => this.processLogQueue(), this.RETRY_DELAY_MS);
+      return;
+    } finally {
+      this.isProcessingLog = false;
+
+      // 如果队列还有内容，延迟处理
+      if (this.logQueue.length > 0) {
+        setTimeout(() => this.processLogQueue(), this.LOG_PROCESS_INTERVAL);
+      }
+    }
+  }
+
+  /**
+   * 执行批量写入日志
+   * @param batch 日志批次
+   * @param retryAttempt 当前重试次数
+   */
+  private async executeBatchWrite(batch: any[], retryAttempt: number): Promise<void> {
+    // 并行获取用户和账本信息
+    const userIds = [...new Set(batch.map(l => l.userId))];
+    const accountIds = [...new Set(batch.filter(l => l.accountId).map(l => l.accountId!))];
+
+    const [users, accountBooks] = await Promise.all([
+      userIds.length > 0 ? prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, name: true },
+      }) : [],
+      accountIds.length > 0 ? prisma.accountBook.findMany({
+        where: { id: { in: accountIds } },
+        select: { id: true, name: true },
+      }) : [],
+    ]);
+
+    const userMap = new Map(users.map(u => [u.id, u.name]));
+    const accountBookMap = new Map(accountBooks.map(ab => [ab.id, ab.name]));
+
+    // 批量创建日志记录
+    const logEntries = batch.map(logData => {
+      const totalTokens = logData.promptTokens + logData.completionTokens;
+      return {
+        userId: logData.userId,
+        userName: userMap.get(logData.userId) || 'Unknown User',
+        accountBookId: logData.accountId || null,
+        accountBookName: logData.accountId ? accountBookMap.get(logData.accountId) || null : null,
+        provider: logData.provider,
+        model: logData.model,
+        source: logData.source || 'App',
+        aiServiceType: 'llm' as const,
+        serviceType: logData.serviceType || 'official',
+        promptTokens: logData.promptTokens,
+        completionTokens: logData.completionTokens,
+        totalTokens: totalTokens,
+        userMessage: logData.userMessage,
+        assistantMessage: logData.assistantMessage,
+        systemPrompt: logData.systemPrompt,
+        isSuccess: logData.isSuccess,
+        errorMessage: logData.errorMessage,
+        duration: logData.duration,
+        cost: this.calculateCost(logData.provider, logData.model, logData.promptTokens, logData.completionTokens),
+      };
+    });
+
+    // 批量插入
+    if (logEntries.length > 0) {
+      await prisma.llmCallLog.createMany({ data: logEntries });
     }
   }
 

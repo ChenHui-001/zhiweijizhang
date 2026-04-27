@@ -16,11 +16,22 @@ import {
  * 负责管理语音识别和视觉识别的配置
  */
 export class MultimodalAIConfigService {
+  // 配置缓存（5分钟TTL）
+  private configCache: { data: FullMultimodalAIConfig | null; expire: number } | null = null;
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5分钟
+
   /**
-   * 获取完整的多模态AI配置
+   * 获取完整的多模态AI配置（带缓存）
    */
   async getFullConfig(): Promise<FullMultimodalAIConfig> {
     try {
+      // 检查缓存是否有效
+      const now = Date.now();
+      if (this.configCache && this.configCache.expire > now) {
+        logger.info('🔍 [配置服务] 使用缓存的配置');
+        return this.configCache.data!;
+      }
+
       // 查询所有相关配置，不限定category
       const configs = await prisma.systemConfig.findMany({
         where: {
@@ -41,26 +52,26 @@ export class MultimodalAIConfigService {
         return acc;
       }, {} as Record<string, string>);
       
-      logger.info('🔍 [配置服务] 智能记账相关配置键:', {
-        hasRelevanceCheck: !!configMap.smart_accounting_relevance_check_prompt,
-        hasSmartAccounting: !!configMap.smart_accounting_prompt,
-        hasImageAnalysis: !!configMap.smart_accounting_image_analysis_prompt,
-        hasMultimodal: !!configMap.smart_accounting_multimodal_prompt
-      });
-
       const result = {
         speech: this.parseSpeechConfig(configMap),
         vision: this.parseVisionConfig(configMap),
         smartAccounting: this.parseSmartAccountingConfig(configMap),
       };
-      
+
+      // 更新缓存
+      this.configCache = {
+        data: result,
+        expire: now + this.CACHE_TTL
+      };
+
+      logger.info('🔍 [配置服务] 配置已缓存，TTL: 5分钟');
       logger.info('🔍 [配置服务] 最终返回的智能记账配置长度:', {
         relevanceCheck: result.smartAccounting.relevanceCheckPrompt.length,
         smartAccounting: result.smartAccounting.smartAccountingPrompt.length,
         imageAnalysis: result.smartAccounting.imageAnalysisPrompt.length,
         multimodal: result.smartAccounting.multimodalPrompt.length
       });
-      
+
       return result;
     } catch (error) {
       logger.error('获取多模态AI配置失败:', error);
@@ -122,6 +133,8 @@ export class MultimodalAIConfigService {
 
     if (configsToUpdate.length > 0) {
       await this.batchUpsertConfigs(configsToUpdate);
+      // 清除配置缓存
+      this.configCache = null;
     }
   }
 
@@ -161,6 +174,8 @@ export class MultimodalAIConfigService {
 
     if (configsToUpdate.length > 0) {
       await this.batchUpsertConfigs(configsToUpdate);
+      // 清除配置缓存
+      this.configCache = null;
     }
   }
 
@@ -225,6 +240,8 @@ export class MultimodalAIConfigService {
 
     if (configsToUpdate.length > 0) {
       await this.batchUpsertConfigs(configsToUpdate);
+      // 清除配置缓存
+      this.configCache = null;
     }
   }
 
@@ -343,4 +360,14 @@ export class MultimodalAIConfigService {
       },
     });
   }
+
+  /**
+   * 清除配置缓存，强制下次读取时从数据库获取最新数据
+   */
+  clearCache(): void {
+    this.configCache = null;
+    logger.info('🗑️ [配置服务] 配置缓存已清除');
+  }
 }
+
+export default new MultimodalAIConfigService();

@@ -476,6 +476,22 @@
   font-size: 12px;
 }
 
+.serviceBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background-color: rgba(34, 197, 94, 0.1);
+  color: rgb(34, 197, 94);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.serviceBadge i {
+  font-size: 10px;
+}
+
 .serviceDescription {
   font-size: 14px;
   color: var(--text-secondary, rgb(107, 114, 128));

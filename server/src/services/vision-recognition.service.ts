@@ -8,7 +8,7 @@ import {
   MultimodalAIErrorType,
   VisionRecognitionConfig,
 } from '../models/multimodal-ai.model';
-import { MultimodalAIConfigService } from './multimodal-ai-config.service';
+import multimodalAIConfigService from './multimodal-ai-config.service';
 import { VisionProviderManager } from '../ai/vision/vision-provider-manager';
 
 /**
@@ -16,11 +16,9 @@ import { VisionProviderManager } from '../ai/vision/vision-provider-manager';
  * 支持多个视觉识别提供商，包括硅基流动、火山方舟等
  */
 export class VisionRecognitionService {
-  private configService: MultimodalAIConfigService;
   private providerManager: VisionProviderManager;
 
   constructor() {
-    this.configService = new MultimodalAIConfigService();
     this.providerManager = new VisionProviderManager();
   }
 
@@ -52,7 +50,7 @@ export class VisionRecognitionService {
 
     try {
       // 获取配置
-      const config = await this.configService.getVisionConfig();
+      const config = await multimodalAIConfigService.getVisionConfig();
 
       // 检查功能是否启用
       if (!config.enabled) {
@@ -106,8 +104,8 @@ export class VisionRecognitionService {
   async testConnection(config?: Partial<VisionRecognitionConfig>): Promise<boolean> {
     try {
       const visionConfig = config
-        ? { ...await this.configService.getVisionConfig(), ...config }
-        : await this.configService.getVisionConfig();
+        ? { ...await multimodalAIConfigService.getVisionConfig(), ...config }
+        : await multimodalAIConfigService.getVisionConfig();
 
       if (!visionConfig.enabled || !visionConfig.apiKey) {
         return false;
@@ -233,7 +231,7 @@ export class VisionRecognitionService {
    * 获取支持的图片格式
    */
   async getSupportedFormats(): Promise<string[]> {
-    const config = await this.configService.getVisionConfig();
+    const config = await multimodalAIConfigService.getVisionConfig();
     return config.allowedFormats;
   }
 
@@ -241,7 +239,7 @@ export class VisionRecognitionService {
    * 获取最大文件大小
    */
   async getMaxFileSize(): Promise<number> {
-    const config = await this.configService.getVisionConfig();
+    const config = await multimodalAIConfigService.getVisionConfig();
     return config.maxFileSize;
   }
 }

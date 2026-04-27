@@ -52,8 +52,8 @@ export default function LLMConfigPage() {
   const { isAuthenticated, token } = useAdminAuth();
   const [config, setConfig] = useState<LLMConfig>({
     enabled: false,
-    provider: 'openai',
-    model: 'gpt-3.5-turbo',
+    provider: 'siliconflow',
+    model: 'Qwen/Qwen2.5-32B-Instruct',
     apiKey: '',
     baseUrl: '',
     temperature: 0.7,
@@ -68,22 +68,20 @@ export default function LLMConfigPage() {
   // 预定义的提供商和模型选项
   const providers = [
     {
-      id: 'openai',
-      name: 'OpenAI',
-      models: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo'],
-      defaultBaseUrl: 'https://api.openai.com/v1',
-    },
-    {
       id: 'siliconflow',
       name: '硅基流动',
       models: ['Qwen/Qwen3-32B', 'Qwen/Qwen2.5-32B-Instruct', 'Qwen/Qwen3-14B', 'Qwen/Qwen3-8B'],
       defaultBaseUrl: 'https://api.siliconflow.cn/v1',
+      description: '国内高性价比选择',
+      badge: '推荐',
     },
     {
       id: 'deepseek',
       name: 'Deepseek',
       models: ['deepseek-chat', 'deepseek-coder'],
       defaultBaseUrl: 'https://api.deepseek.com/v1',
+      description: '深度求索AI服务',
+      badge: null,
     },
     {
       id: 'volcengine',
@@ -98,12 +96,16 @@ export default function LLMConfigPage() {
         'ep-20241217-bbbbb', // 豆包-pro-128k (示例接入点ID)
       ],
       defaultBaseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
+      description: '字节跳动豆包模型',
+      badge: null,
     },
     {
       id: 'custom',
       name: '自定义',
       models: [],
       defaultBaseUrl: '',
+      description: '配置自定义API提供商',
+      badge: null,
     },
   ];
 
@@ -122,8 +124,8 @@ export default function LLMConfigPage() {
           const configs = data.data.configs || {};
           setConfig({
             enabled: configs.enabled ?? false,
-            provider: configs.provider || 'openai',
-            model: configs.model || 'gpt-3.5-turbo',
+            provider: configs.provider || 'siliconflow',
+            model: configs.model || 'Qwen/Qwen2.5-32B-Instruct',
             apiKey: configs.apiKey || '',
             baseUrl: configs.baseUrl || '',
             temperature: configs.temperature ?? 0.7,
@@ -273,45 +275,12 @@ export default function LLMConfigPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">全局 LLM 配置</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          配置系统默认的AI服务提供商（单一提供商模式）
-        </p>
-
-        {/* 配置优先级说明 */}
-        <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <div className="flex items-start space-x-3">
-            <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-                配置优先级说明
-              </h3>
-              <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
-                • <strong>全局LLM配置</strong>：单一提供商模式，适合简单场景
-                <br />• <strong>多提供商配置</strong>：支持多个提供商、优先级、故障转移等高级功能
-                <br />• 当多提供商模式启用时，系统将优先使用多提供商配置，全局配置将被忽略
-              </p>
-              <div className="mt-2">
-                <Button
-                  variant="ghost"
-                  className="h-auto p-0 text-blue-700 dark:text-blue-300 text-sm"
-                  onClick={() => window.open('/admin/multi-provider-llm', '_blank')}
-                >
-                  前往多提供商管理 →
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div className="max-w-5xl mx-auto p-6 space-y-6">
       {/* 页面头部 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">LLM 服务管理</h1>
-          <p className="text-gray-600">配置全局的大语言模型服务，为用户提供AI助手功能</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI 服务配置</h1>
+          <p className="text-gray-500 mt-1">配置自定义AI服务提供商，为用户提供智能记账功能</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={loadConfig} disabled={loading}>
@@ -370,23 +339,26 @@ export default function LLMConfigPage() {
           {/* 提供商选择 */}
           <div className="space-y-2">
             <Label>服务提供商</Label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {providers.map((provider) => (
                 <div
                   key={provider.id}
-                  className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                  className={`border-2 rounded-xl p-4 cursor-pointer transition-all duration-200 ${
                     config.provider === provider.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-blue-300'
+                      ? 'border-blue-500 bg-blue-50 shadow-md'
+                      : 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
                   }`}
                   onClick={() => handleProviderChange(provider.id)}
                 >
-                  <div className="font-medium">{provider.name}</div>
-                  <div className="text-sm text-gray-600">
-                    {provider.id === 'openai' && '官方OpenAI服务'}
-                    {provider.id === 'siliconflow' && '国内高性价比选择'}
-                    {provider.id === 'custom' && '自定义API提供商'}
+                  <div className="flex items-start justify-between">
+                    <div className="font-semibold text-gray-900">{provider.name}</div>
+                    {provider.badge && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                        {provider.badge}
+                      </span>
+                    )}
                   </div>
+                  <div className="text-sm text-gray-500 mt-1">{provider.description}</div>
                 </div>
               ))}
             </div>

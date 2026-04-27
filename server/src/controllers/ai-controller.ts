@@ -15,6 +15,29 @@ import { AttachmentType } from '../models/file-storage.model';
 import { DateCorrectionMiddleware, SmartAccountingResultWithValidation } from '../middleware/date-correction.middleware';
 
 /**
+ * 带超时的Promise包装器
+ * @param promise 要执行的Promise
+ * @param timeoutMs 超时时间（毫秒）
+ * @param timeoutErrorMsg 超时错误消息
+ */
+async function promiseWithTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutErrorMsg: string = '操作超时'
+): Promise<T> {
+  let timeoutHandle: NodeJS.Timeout;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => reject(new Error(timeoutErrorMsg)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    clearTimeout(timeoutHandle!);
+  }
+}
+
+/**
  * AI功能控制器
  * 处理AI相关的API请求
  */
@@ -114,22 +137,43 @@ export class AIController {
         return res.status(404).json({ error: '账本不存在或无权访问' });
       }
 
-      // 处理描述
-      let result: SmartAccountingResponse;
+      // 处理描述（带超时控制）
+      const SMART_ACCOUNTING_TIMEOUT = 50000; // 40秒超时
+      let result: SmartAccountingResponse | null = null;
+      let lastError: Error | null = null;
       try {
-        result = await this.smartAccounting.processDescription(
-          processedDescription,
-          userId,
-          accountId,
-          accountBook.type,
-          false,
-          source,
+        result = await promiseWithTimeout(
+          this.smartAccounting.processDescription(
+            processedDescription,
+            userId,
+            accountId,
+            accountBook.type,
+            false,
+            source,
+          ),
+          SMART_ACCOUNTING_TIMEOUT,
+          '智能记账处理超时，请稍后重试'
         );
       } catch (aiError) {
-        throw aiError;
+        lastError = aiError instanceof Error ? aiError : new Error(String(aiError));
       }
 
+      // result为null可能是网络错误或LLM服务不可用
       if (!result) {
+        const errorMessage = lastError?.message || '';
+        if (
+          errorMessage.includes('ECONNRESET') ||
+          errorMessage.includes('socket hang up') ||
+          errorMessage.includes('ECONNABORTED') ||
+          errorMessage.includes('timeout') ||
+          errorMessage.includes('Network Error') ||
+          errorMessage.includes('fetch failed')
+        ) {
+          return res.status(503).json({
+            error: 'AI服务暂时不可用，请稍后重试',
+            type: 'SERVICE_UNAVAILABLE',
+          });
+        }
         return res.status(500).json({ error: '智能记账处理失败' });
       }
 
@@ -1175,22 +1219,43 @@ export class AIController {
 
       logger.info(`📝 [记账处理] 实际记账用户: ${actualUserName} (ID: ${actualUserId})`);
 
-      // 使用实际用户ID进行智能记账分析
-      let smartResult: SmartAccountingResponse;
+      // 使用实际用户ID进行智能记账分析（带超时控制）
+      const SMART_ACCOUNTING_TIMEOUT = 50000; // 40秒超时
+      let smartResult: SmartAccountingResponse | null = null;
+      let lastError: Error | null = null;
       try {
-        smartResult = await this.smartAccounting.processDescription(
-          processedDescription,
-          actualUserId, // 使用实际的记账用户ID，这样预算匹配会优先使用该用户的预算
-          accountBookId,
-          accountBook.type,
-          includeDebugInfo || false,
-          source,
+        smartResult = await promiseWithTimeout(
+          this.smartAccounting.processDescription(
+            processedDescription,
+            actualUserId, // 使用实际的记账用户ID，这样预算匹配会优先使用该用户的预算
+            accountBookId,
+            accountBook.type,
+            includeDebugInfo || false,
+            source,
+          ),
+          SMART_ACCOUNTING_TIMEOUT,
+          '智能记账处理超时，请稍后重试'
         );
       } catch (aiError) {
-        throw aiError;
+        lastError = aiError instanceof Error ? aiError : new Error(String(aiError));
       }
 
+      // smartResult为null可能是网络错误或LLM服务不可用
       if (!smartResult) {
+        const errorMessage = lastError?.message || '';
+        if (
+          errorMessage.includes('ECONNRESET') ||
+          errorMessage.includes('socket hang up') ||
+          errorMessage.includes('ECONNABORTED') ||
+          errorMessage.includes('timeout') ||
+          errorMessage.includes('Network Error') ||
+          errorMessage.includes('fetch failed')
+        ) {
+          return res.status(503).json({
+            error: 'AI服务暂时不可用，请稍后重试',
+            type: 'SERVICE_UNAVAILABLE',
+          });
+        }
         return res.status(500).json({ error: '智能记账处理失败' });
       }
 
@@ -1402,22 +1467,43 @@ export class AIController {
         return res.status(404).json({ error: '账本不存在或无权访问' });
       }
 
-      // 处理描述，获取智能记账结果
-      let result: SmartAccountingResponse;
+      // 处理描述，获取智能记账结果（带超时控制）
+      const SMART_ACCOUNTING_TIMEOUT = 50000; // 40秒超时
+      let result: SmartAccountingResponse | null = null;
+      let lastError: Error | null = null;
       try {
-        result = await this.smartAccounting.processDescription(
-          processedDescription,
-          userId,
-          accountId,
-          accountBook.type,
-          false,
-          source,
+        result = await promiseWithTimeout(
+          this.smartAccounting.processDescription(
+            processedDescription,
+            userId,
+            accountId,
+            accountBook.type,
+            false,
+            source,
+          ),
+          SMART_ACCOUNTING_TIMEOUT,
+          '智能记账处理超时，请稍后重试'
         );
       } catch (aiError) {
-        throw aiError;
+        lastError = aiError instanceof Error ? aiError : new Error(String(aiError));
       }
 
+      // result为null可能是网络错误或LLM服务不可用
       if (!result) {
+        const errorMessage = lastError?.message || '';
+        if (
+          errorMessage.includes('ECONNRESET') ||
+          errorMessage.includes('socket hang up') ||
+          errorMessage.includes('ECONNABORTED') ||
+          errorMessage.includes('timeout') ||
+          errorMessage.includes('Network Error') ||
+          errorMessage.includes('fetch failed')
+        ) {
+          return res.status(503).json({
+            error: 'AI服务暂时不可用，请稍后重试',
+            type: 'SERVICE_UNAVAILABLE',
+          });
+        }
         return res.status(500).json({ error: '智能记账处理失败' });
       }
 

@@ -115,25 +115,34 @@ export const ACCOUNTING_PROMPTS: Record<string, PromptTemplate> = {
 };
 
 /**
- * 智能记账系统提示（优化版 - 减少token消耗）
+ * 智能记账系统提示（优化版 - 减少token消耗，合并相关性判断）
  */
 export const SMART_ACCOUNTING_SYSTEM_PROMPT = `
-你是专业财务助手，从用户描述中提取记账信息。
+你是专业财务助手，判断用户描述是否与记账相关，并提取记账信息。
 
-分类列表：
-{{categories}}
+相关性判断标准：
+1. 包含金额信息（必须）
+2. 包含记账流水明细（必须，如购买、支付、收入等）
+3. 如果只是询问、闲聊或其他非记账相关内容，判定为无关
 
-{{budgets}}
+如果判定为无关，返回：
+{"isRelevant": false, "reason": "判定理由"}
 
-从描述中提取：
+如果判定为相关，从描述中提取：
 1. 金额（仅数字）
 2. 日期（未提及用今日）
 3. 分类（匹配上述分类）
 4. 预算（若提及预算/人名则匹配）
 5. 备注（简短描述）
 
+分类列表：
+{{categories}}
+
+{{budgets}}
+
 返回JSON格式：
 {
+  "isRelevant": true,
   "amount": 数字,
   "date": "YYYY-MM-DD",
   "categoryId": "分类ID",
