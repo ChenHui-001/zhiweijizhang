@@ -19,9 +19,10 @@ import {
   toAccountLLMSettingResponseDto,
 } from '../models/account-llm-setting.model';
 import { CreateBudgetDto } from '../models/budget.model';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { UserSettingService } from './user-setting.service';
+import { UserSettingKey } from '../models/user-setting.model';
+import { BudgetService } from './budget.service';
+import prisma from '../config/database';
 
 export class AccountBookService {
   private accountBookRepository: AccountBookRepository;
@@ -90,10 +91,13 @@ export class AccountBookService {
     // 4. 合并个人账本和家庭账本
     const allAccountBooks = [...personalAccountBooks, ...familyAccountBooks];
 
-    // 5. 去重（以防有重复）
-    const uniqueAccountBooks = allAccountBooks.filter(
-      (book, index, self) => index === self.findIndex((b) => b.id === book.id),
-    );
+    // 5. 去重（使用Set O(n)替代findIndex O(n²)）
+    const seen = new Set<string>();
+    const uniqueAccountBooks = allAccountBooks.filter((book) => {
+      if (seen.has(book.id)) return false;
+      seen.add(book.id);
+      return true;
+    });
 
     // 6. 获取每个账本的统计信息
     const accountBooksWithStats = await Promise.all(
@@ -185,8 +189,6 @@ export class AccountBookService {
    */
   async getDefaultAccountBook(userId: string): Promise<AccountBookResponseDto | null> {
     // 从用户设置中获取默认账本ID
-    const { UserSettingService } = require('./user-setting.service');
-    const { UserSettingKey } = require('../models/user-setting.model');
     const userSettingService = new UserSettingService();
 
     const defaultAccountBookSetting = await userSettingService.getUserSetting(
@@ -374,8 +376,6 @@ export class AccountBookService {
     }
 
     // 使用用户设置服务来存储默认账本ID
-    const { UserSettingService } = require('./user-setting.service');
-    const { UserSettingKey } = require('../models/user-setting.model');
     const userSettingService = new UserSettingService();
 
     // 将账本ID保存到用户设置中
@@ -471,7 +471,6 @@ export class AccountBookService {
     }
 
     // 创建预算（使用 budgetService 以确保重复检查）
-    const { BudgetService } = require('./budget.service');
     const budgetService = new BudgetService();
     await budgetService.createBudget(userId, budgetData);
   }

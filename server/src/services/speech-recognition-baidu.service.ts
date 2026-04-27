@@ -93,14 +93,14 @@ export class BaiduSpeechRecognitionService {
   private async getAccessToken(config: SpeechRecognitionConfig): Promise<string> {
     // 检查是否已有有效的访问令牌
     if (this.accessToken && Date.now() < this.tokenExpiry) {
-      logger.info('🔑 [BaiduAuth] 使用缓存的访问令牌');
+      logger.info('[BaiduAuth] 使用缓存的访问令牌');
       return this.accessToken;
     }
 
     try {
-      logger.info('🔑 [BaiduAuth] 开始获取新的访问令牌');
-      logger.info('🔑 [BaiduAuth] API Key长度:', config.apiKey?.length || 0);
-      logger.info('🔑 [BaiduAuth] Secret Key长度:', config.secretKey?.length || 0);
+      logger.info('[BaiduAuth] 开始获取新的访问令牌');
+      logger.info('[BaiduAuth] API Key长度:', config.apiKey?.length || 0);
+      logger.info('[BaiduAuth] Secret Key长度:', config.secretKey?.length || 0);
       
       const tokenUrl = 'https://aip.baidubce.com/oauth/2.0/token';
       const params = {
@@ -109,8 +109,8 @@ export class BaiduSpeechRecognitionService {
         client_secret: config.secretKey, // 百度云的 Secret Key
       };
       
-      logger.info('🔑 [BaiduAuth] 请求Token URL:', tokenUrl);
-      logger.info('🔑 [BaiduAuth] 请求参数:', {
+      logger.info('[BaiduAuth] 请求Token URL:', tokenUrl);
+      logger.info('[BaiduAuth] 请求参数:', {
         grant_type: params.grant_type,
         client_id: config.apiKey ? `${config.apiKey.substring(0, 8)}...` : 'MISSING',
         client_secret: config.secretKey ? `${config.secretKey.substring(0, 8)}...` : 'MISSING'
@@ -121,8 +121,8 @@ export class BaiduSpeechRecognitionService {
         timeout: 10000,
       });
 
-      logger.info('🔑 [BaiduAuth] Token响应状态:', response.status);
-      logger.info('🔑 [BaiduAuth] Token响应数据:', {
+      logger.info('[BaiduAuth] Token响应状态:', response.status);
+      logger.info('[BaiduAuth] Token响应数据:', {
         access_token: response.data.access_token ? `${response.data.access_token.substring(0, 20)}...` : 'MISSING',
         expires_in: response.data.expires_in,
         error: response.data.error,
@@ -133,13 +133,13 @@ export class BaiduSpeechRecognitionService {
         this.accessToken = response.data.access_token;
         // 令牌有效期为30天，提前5分钟过期
         this.tokenExpiry = Date.now() + (response.data.expires_in - 300) * 1000;
-        logger.info('🔑 [BaiduAuth] 访问令牌获取成功，有效期:', new Date(this.tokenExpiry));
+        logger.info('[BaiduAuth] 访问令牌获取成功，有效期:', new Date(this.tokenExpiry));
         return this.accessToken;
       }
 
       // 如果有错误信息，记录详细错误
       if (response.data.error) {
-        logger.error('🔑 [BaiduAuth] 百度云返回错误:', {
+        logger.error('[BaiduAuth] 百度云返回错误:', {
           error: response.data.error,
           error_description: response.data.error_description
         });
@@ -155,7 +155,7 @@ export class BaiduSpeechRecognitionService {
       );
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        logger.error('🔑 [BaiduAuth] 网络请求失败:', {
+        logger.error('[BaiduAuth] 网络请求失败:', {
           status: error.response?.status,
           statusText: error.response?.statusText,
           data: error.response?.data,
@@ -167,7 +167,7 @@ export class BaiduSpeechRecognitionService {
           `获取百度云访问令牌失败: ${error.response?.data?.error_description || error.message}`
         );
       }
-      logger.error('🔑 [BaiduAuth] 未知错误:', error);
+      logger.error('[BaiduAuth] 未知错误:', error);
       throw error;
     }
   }
@@ -206,7 +206,7 @@ export class BaiduSpeechRecognitionService {
         actualSampleRate = amrInfo.sampleRate; // 使用检测到的实际采样率
         actualChannels = amrInfo.channels;
 
-        logger.info(`🔍 [AMR详细分析] AMR文件参数:`, {
+        logger.info(`[AMR详细分析] AMR文件参数:`, {
           文件头: audioBuffer.slice(0, 10).toString('hex'),
           文件大小: audioBuffer.length,
           Base64长度: audioBase64.length,
@@ -244,7 +244,7 @@ export class BaiduSpeechRecognitionService {
       };
 
       // 添加调试日志
-      logger.info(`🔍 [百度语音API] 请求参数详情:`, {
+      logger.info(`[百度语音API] 请求参数详情:`, {
         format: requestData.format,
         rate: requestData.rate,
         channel: requestData.channel,
@@ -397,7 +397,7 @@ export class BaiduSpeechRecognitionService {
     };
 
     const detectedFormat = formatMap[extension] || 'wav';
-    logger.info(`🔍 [格式检测] 文件名: ${filename}, 扩展名: ${extension}, 映射格式: ${detectedFormat}`);
+    logger.info(`[格式检测] 文件名: ${filename}, 扩展名: ${extension}, 映射格式: ${detectedFormat}`);
 
     return detectedFormat;
   }
@@ -443,7 +443,7 @@ export class BaiduSpeechRecognitionService {
    */
   private getFileExtension(filename: string): string {
     const extension = filename.split('.').pop()?.toLowerCase() || '';
-    logger.info(`🔍 [扩展名提取] 文件名: ${filename}, 提取的扩展名: ${extension}`);
+    logger.info(`[扩展名提取] 文件名: ${filename}, 提取的扩展名: ${extension}`);
     return extension;
   }
 

@@ -105,7 +105,6 @@ export class SiliconFlowVisionProvider implements VisionProvider {
 
       return {
         text: content,
-        confidence: 0.9, // 硅基流动API暂不返回置信度，使用默认值
       };
     } catch (error) {
       if (axios.isAxiosError(error)) {

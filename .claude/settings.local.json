@@ -26,7 +26,8 @@
       "Bash(docker/scripts/build/build-all.sh all *)",
       "Bash(bash build-all.sh all)",
       "Bash(powershell.exe *)",
-      "Bash(cmd.exe *)"
+      "Bash(cmd.exe *)",
+      "Bash(bash *)"
     ]
   }
 }

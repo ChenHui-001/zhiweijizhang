@@ -98,9 +98,9 @@ export class VisionProviderManager {
         return false;
       }
 
-      // 创建测试请求 - 使用火山方舟官方示例图片URL
+      // 创建测试请求 - 使用标准测试图片
       const testRequest: VisionRecognitionRequest = {
-        imageUrl: 'https://ark-project.tos-cn-beijing.ivolces.com/images/view.jpeg',
+        imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/300px-PNG_transparency_demonstration_1.png',
         prompt: '这是一个测试图片，请简单描述。',
       };
 

@@ -506,7 +506,7 @@ export class SmartAccounting {
 
     // 如果内存匹配已在analyzeTransactionHandler中完成，跳过重复的DB查询
     if ((state.analyzedTransaction as any).budgetId) {
-      logger.info(`[预算匹配] 内存匹配已完成，跳过DB查询: ${state.analyzedTransaction.budgetId}`);
+      logger.info(`[预算匹配] 内存匹配已完成，跳过DB查询: ${(state.analyzedTransaction as any).budgetId}`);
       return state;
     }
 

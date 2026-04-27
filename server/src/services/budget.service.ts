@@ -1,21 +1,18 @@
 import { logger } from '../utils/logger';
 import { endOfDay } from '../utils/date-helpers';
+import prisma from '../config/database';
 import {
   BudgetPeriod,
   BudgetType,
   Budget,
   Category,
   RolloverType,
-  PrismaClient,
   Transaction,
 } from '@prisma/client';
 import { BudgetRepository, BudgetWithCategory } from '../repositories/budget.repository';
 import { CategoryRepository } from '../repositories/category.repository';
 import { CategoryBudgetRepository } from '../repositories/category-budget.repository';
 import { BudgetDateUtils } from '../utils/budget-date-utils';
-
-// 创建Prisma客户端实例
-const prisma = new PrismaClient();
 import {
   CreateBudgetDto,
   UpdateBudgetDto,
@@ -148,73 +145,34 @@ export class BudgetService {
       budgetsCount: budgets.length,
     });
 
-    // 获取每个预算的已使用金额
-    const budgetsWithSpent = await Promise.all(
-      budgets.map(async (budget) => {
-        const spent = await this.budgetRepository.calculateSpentAmount(budget.id);
+    // 批量计算已使用金额（消除N+1）
+    const spentMap = await this.budgetRepository.calculateBatchSpentAmounts(budgets.map(b => b.id));
 
-        // 创建预算响应DTO
-        const budgetDto = toBudgetResponseDto(
-          budget,
-          budget.category ? toCategoryResponseDto(budget.category) : undefined,
-          spent,
-        );
+    // 直接使用已关联查询的数据获取成员名称（repository的findAll已include user/familyMember）
+    const budgetsWithSpent = budgets.map((budget) => {
+      const spent = spentMap.get(budget.id) || 0;
 
-        // 添加用户名称信息
-        if (budget.user) {
-          budgetDto.userName = budget.user.name;
-        }
+      const budgetDto = toBudgetResponseDto(
+        budget,
+        budget.category ? toCategoryResponseDto(budget.category) : undefined,
+        spent,
+      );
 
-        // 添加账本信息
-        if (budget.accountBook) {
-          budgetDto.accountBookName = budget.accountBook.name;
-          budgetDto.accountBookType = budget.accountBook.type;
-        }
+      if (budget.user) {
+        budgetDto.userName = budget.user.name;
+      }
+      if (budget.accountBook) {
+        budgetDto.accountBookName = budget.accountBook.name;
+        budgetDto.accountBookType = budget.accountBook.type;
+      }
+      if ((budget as any).familyMember) {
+        budgetDto.familyMemberName = (budget as any).familyMember.name;
+      } else if (budget.user && budgetDto.familyMemberId === null) {
+        budgetDto.familyMemberName = budget.user.name;
+      }
 
-        // 处理成员信息 - 按照指定逻辑获取预算名称
-        try {
-          // 1. 判断预算是否有family_member_id
-          if (budgetDto.familyMemberId) {
-            // 如果有family_member_id，按照托管用户的方式处理
-            if ((budget as any).familyMember) {
-              // 如果已经关联查询了familyMember，直接使用
-              budgetDto.familyMemberName = (budget as any).familyMember.name;
-            } else {
-              // 否则查询托管成员信息
-              const familyMember = await prisma.familyMember.findUnique({
-                where: { id: budgetDto.familyMemberId },
-              });
-
-              if (familyMember) {
-                budgetDto.familyMemberName = familyMember.name;
-              }
-            }
-          }
-          // 2. 如果family_member_id为空，则根据user_id查询用户名称
-          else if (budgetDto.userId) {
-            // 从users表中查询用户名称
-            if (budget.user) {
-              // 如果已经关联查询了user，直接使用
-              budgetDto.familyMemberName = budget.user.name;
-            } else {
-              // 否则查询用户信息
-              const user = await prisma.user.findUnique({
-                where: { id: budgetDto.userId },
-                select: { name: true },
-              });
-
-              if (user) {
-                budgetDto.familyMemberName = user.name;
-              }
-            }
-          }
-        } catch (error) {
-          logger.error(`获取预算用户名称失败: ${error}`);
-        }
-
-        return budgetDto;
-      }),
-    );
+      return budgetDto;
+    });
 
     return {
       total,
@@ -442,15 +400,15 @@ export class BudgetService {
 
       logger.info(`找到 ${budgets.length} 个匹配的预算`);
 
-      // 转换为响应DTO并计算spent
-      const budgetDtos: BudgetResponseDto[] = [];
+      // 批量计算已使用金额（消除N+1）
+      const spentMap = await this.budgetRepository.calculateBatchSpentAmounts(budgets.map(b => b.id));
 
-      for (const budget of budgets) {
-        const spent = await this.budgetRepository.calculateSpentAmount(budget.id);
+      // 直接使用已关联查询的数据获取成员名称
+      const budgetDtos = budgets.map((budget) => {
+        const spent = spentMap.get(budget.id) || 0;
         const category = budget.category ? toCategoryResponseDto(budget.category) : undefined;
         const budgetDto = toBudgetResponseDto(budget, category, spent);
 
-        // 添加额外的计算字段
         budgetDto.spent = spent;
         budgetDto.remaining = budgetDto.amount - spent;
         budgetDto.adjustedRemaining = budgetDto.amount + (budgetDto.rolloverAmount || 0) - spent;
@@ -459,38 +417,19 @@ export class BudgetService {
             ? (spent / (budgetDto.amount + (budgetDto.rolloverAmount || 0))) * 100
             : 0;
 
-        // 添加账本信息
         if (budget.accountBook) {
           budgetDto.accountBookType = budget.accountBook.type;
           budgetDto.accountBookName = budget.accountBook.name;
           budgetDto.familyId = budget.accountBook.familyId || undefined;
         }
-
-        // 处理用户名称
-        try {
-          if (budgetDto.familyMemberId) {
-            const familyMember = await prisma.familyMember.findUnique({
-              where: { id: budgetDto.familyMemberId },
-              select: { name: true },
-            });
-            if (familyMember) {
-              budgetDto.familyMemberName = familyMember.name;
-            }
-          } else if (budgetDto.userId) {
-            const user = await prisma.user.findUnique({
-              where: { id: budgetDto.userId },
-              select: { name: true },
-            });
-            if (user) {
-              budgetDto.familyMemberName = user.name;
-            }
-          }
-        } catch (error) {
-          logger.error(`获取预算用户名称失败: ${error}`);
+        if ((budget as any).familyMember) {
+          budgetDto.familyMemberName = (budget as any).familyMember.name;
+        } else if ((budget as any).user && budgetDto.familyMemberId === null) {
+          budgetDto.familyMemberName = (budget as any).user.name;
         }
 
-        budgetDtos.push(budgetDto);
-      }
+        return budgetDto;
+      });
 
       return budgetDtos;
     } catch (error) {
@@ -518,66 +457,40 @@ export class BudgetService {
       budgets = await this.budgetRepository.findActiveBudgets(userId, new Date(), accountBookId);
     }
 
-    // 获取每个预算的已使用金额
-    const budgetsWithSpent = await Promise.all(
-      budgets.map(async (budget) => {
-        const spent = await this.budgetRepository.calculateSpentAmount(budget.id);
+    // 批量计算已使用金额（消除N+1）
+    const spentMap = await this.budgetRepository.calculateBatchSpentAmounts(budgets.map(b => b.id));
 
-        // 确保预算包含账本信息
-        let accountBookType = 'PERSONAL';
-        let accountBookName = '个人账本';
-        let familyId = undefined;
+    // 直接使用已关联查询的数据获取成员名称（repository的findActiveBudgets已include user/familyMember/accountBook）
+    const budgetsWithSpent = budgets.map((budget) => {
+      const spent = spentMap.get(budget.id) || 0;
 
-        if (budget.accountBook) {
-          accountBookType = budget.accountBook.type;
-          accountBookName = budget.accountBook.name;
-          familyId = budget.accountBook.familyId || undefined;
-        }
+      let accountBookType = 'PERSONAL';
+      let accountBookName = '个人账本';
+      let familyId = undefined;
 
-        // 转换为响应DTO
-        const budgetDto = toBudgetResponseDto(
-          budget,
-          budget.category ? toCategoryResponseDto(budget.category) : undefined,
-          spent,
-        );
+      if (budget.accountBook) {
+        accountBookType = budget.accountBook.type;
+        accountBookName = budget.accountBook.name;
+        familyId = budget.accountBook.familyId || undefined;
+      }
 
-        // 添加账本信息
-        budgetDto.accountBookType = accountBookType;
-        budgetDto.accountBookName = accountBookName;
-        budgetDto.familyId = familyId;
+      const budgetDto = toBudgetResponseDto(
+        budget,
+        budget.category ? toCategoryResponseDto(budget.category) : undefined,
+        spent,
+      );
+      budgetDto.accountBookType = accountBookType;
+      budgetDto.accountBookName = accountBookName;
+      budgetDto.familyId = familyId;
 
-        // 处理成员信息 - 按照指定逻辑获取预算名称
-        try {
-          // 1. 判断预算是否有family_member_id
-          if (budgetDto.familyMemberId) {
-            // 如果有family_member_id，按照托管用户的方式处理
-            const familyMember = await prisma.familyMember.findUnique({
-              where: { id: budgetDto.familyMemberId },
-            });
+      if ((budget as any).familyMember) {
+        budgetDto.familyMemberName = (budget as any).familyMember.name;
+      } else if ((budget as any).user && budgetDto.familyMemberId === null) {
+        budgetDto.familyMemberName = (budget as any).user.name;
+      }
 
-            if (familyMember) {
-              budgetDto.familyMemberName = familyMember.name;
-            }
-          }
-          // 2. 如果family_member_id为空，则根据user_id查询用户名称
-          else if (budgetDto.userId) {
-            // 从users表中查询用户名称
-            const user = await prisma.user.findUnique({
-              where: { id: budgetDto.userId },
-              select: { name: true },
-            });
-
-            if (user) {
-              budgetDto.familyMemberName = user.name;
-            }
-          }
-        } catch (error) {
-          logger.error(`获取预算用户名称失败: ${error}`);
-        }
-
-        return budgetDto;
-      }),
-    );
+      return budgetDto;
+    });
 
     logger.debug(`处理完成，返回 ${budgetsWithSpent.length} 个预算`);
     return budgetsWithSpent;

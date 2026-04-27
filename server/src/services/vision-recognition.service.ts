@@ -23,26 +23,6 @@ export class VisionRecognitionService {
   }
 
   /**
-   * 图片识别 - 直接调用原始方法，无需积分检查
-   * @param request 图片识别请求
-   * @param userId 用户ID
-   */
-  async recognizeImageWithStandalonePointsDeduction(request: VisionRecognitionRequest, userId: string): Promise<MultimodalAIResponse> {
-    logger.info(`✅ [图片识别] 用户 ${userId} 使用图片识别功能`);
-    return await this.recognizeImage(request);
-  }
-
-  /**
-   * 图片识别 - 用于智能记账，直接调用原始方法，无需积分检查
-   * @param request 图片识别请求
-   * @param userId 用户ID
-   */
-  async recognizeImageWithPointsDeduction(request: VisionRecognitionRequest, userId: string): Promise<MultimodalAIResponse> {
-    logger.info(`✅ [图片识别] 用户 ${userId} 使用图片识别功能（智能记账）`);
-    return await this.recognizeImage(request);
-  }
-
-  /**
    * 图片识别（原始方法，不扣除记账点）
    */
   async recognizeImage(request: VisionRecognitionRequest): Promise<MultimodalAIResponse> {

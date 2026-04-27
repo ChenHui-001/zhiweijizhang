@@ -25,26 +25,6 @@ export class SpeechRecognitionService {
   }
 
   /**
-   * 语音转文本 - 直接调用原始方法，无需积分检查
-   * @param request 语音识别请求
-   * @param userId 用户ID
-   */
-  async speechToTextWithStandalonePointsDeduction(request: SpeechRecognitionRequest, userId: string): Promise<MultimodalAIResponse> {
-    logger.info(`✅ [语音识别] 用户 ${userId} 使用语音识别功能`);
-    return await this.speechToText(request);
-  }
-
-  /**
-   * 语音转文本 - 用于智能记账，直接调用原始方法，无需积分检查
-   * @param request 语音识别请求
-   * @param userId 用户ID
-   */
-  async speechToTextWithPointsDeduction(request: SpeechRecognitionRequest, userId: string): Promise<MultimodalAIResponse> {
-    logger.info(`✅ [语音识别] 用户 ${userId} 使用语音识别功能（智能记账）`);
-    return await this.speechToText(request);
-  }
-
-  /**
    * 语音转文本（原始方法，不扣除记账点）
    */
   async speechToText(request: SpeechRecognitionRequest): Promise<MultimodalAIResponse> {

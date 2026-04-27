@@ -564,6 +564,67 @@ export class BudgetRepository {
   }
 
   /**
+   * 批量计算多个预算的已使用金额
+   * 通过一次聚合查询替代逐个查询（消除N+1）
+   */
+  async calculateBatchSpentAmounts(budgetIds: string[]): Promise<Map<string, number>> {
+    if (budgetIds.length === 0) return new Map();
+
+    const spentById = new Map<string, number>(budgetIds.map(id => [id, 0]));
+
+    // 批量查询普通预算关联的支出
+    const results = await prisma.transaction.groupBy({
+      by: ['budgetId'],
+      where: {
+        budgetId: { in: budgetIds },
+        type: 'EXPENSE',
+      },
+      _sum: { amount: true },
+    });
+
+    for (const r of results) {
+      if (r.budgetId) {
+        spentById.set(r.budgetId, Number(r._sum.amount) || 0);
+      }
+    }
+
+    // 批量查询多人预算分摊记录
+    const multibudgetTransactions = await prisma.transaction.findMany({
+      where: {
+        isMultiBudget: true,
+        budgetAllocation: { not: Prisma.DbNull },
+      },
+      select: {
+        id: true,
+        amount: true,
+        budgetAllocation: true,
+      },
+    });
+
+    for (const transaction of multibudgetTransactions) {
+      try {
+        const allocationData = transaction.budgetAllocation;
+        const budgetAllocation = typeof allocationData === 'string'
+          ? JSON.parse(allocationData)
+          : allocationData;
+
+        if (Array.isArray(budgetAllocation)) {
+          for (const alloc of budgetAllocation) {
+            if (alloc.budgetId && spentById.has(alloc.budgetId)) {
+              const current = spentById.get(alloc.budgetId) || 0;
+              spentById.set(alloc.budgetId, current + Number(alloc.amount));
+            }
+          }
+        }
+      } catch (e) {
+        logger.warn(`解析多人预算分摊失败: 交易ID=${transaction.id}`);
+      }
+    }
+
+    return spentById;
+  }
+
+  /**
    * 获取当前活跃的预算
    * 包括用户的个人预算和用户所属家庭的预算
    * 可选根据账本ID进行过滤

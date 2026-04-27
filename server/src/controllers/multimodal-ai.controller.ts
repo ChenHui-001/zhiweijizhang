@@ -183,30 +183,9 @@ export class MultimodalAIController {
         logger.warn('获取视觉识别配置失败:', configError);
       }
 
-      // 如果有文件上传，先保存到S3（带压缩）
-      let processedImageFile: Express.Multer.File | undefined = req.file;
-      if (req.file) {
-        try {
-          const uploadResult = await this.fileStorageService.uploadFile(
-            req.file,
-            {
-              bucket: BUCKET_CONFIG.TEMP, // 使用临时存储桶
-              category: 'multimodal',
-              description: '图片识别',
-              expiresIn: 3600, // 1小时后过期
-            },
-            userId
-          );
-          logger.info(`图片已保存到S3: ${uploadResult.url}, 文件大小: ${uploadResult.size} bytes`);
-        } catch (uploadError) {
-          logger.warn('保存图片到S3失败，使用原始文件进行识别:', uploadError);
-          // 上传失败不影响识别流程，继续使用原始文件
-        }
-      }
-
-      // 构建请求
+      // 直接识别（S3上传仅在识别成功后按需进行，避免浪费）
       const visionRequest: VisionRecognitionRequest = {
-        imageFile: processedImageFile,
+        imageFile: req.file,
         imageUrl: req.body.imageUrl,
         imageBase64: req.body.imageBase64,
         prompt: req.body.prompt,
@@ -437,60 +416,14 @@ export class MultimodalAIController {
         return;
       }
 
-      // 2. 先保存图片到S3（带压缩）- 保存到永久存储桶以备附件使用
-      let savedImageFile: Express.Multer.File = req.file;
-      let permanentFileInfo: any = null;
-      
-      try {
-        // 保存到永久存储桶以便后续作为附件
-        const permanentUploadResult = await this.fileStorageService.uploadFile(
-          req.file,
-          {
-            bucket: BUCKET_CONFIG.ATTACHMENTS, // 使用交易附件存储桶
-            category: 'smart-accounting-images',
-            description: '智能记账上传图片',
-          },
-          userId
-        );
-        
-        permanentFileInfo = {
-          id: permanentUploadResult.fileId,
-          url: permanentUploadResult.url,
-          size: permanentUploadResult.size,
-          filename: permanentUploadResult.filename,
-          mimeType: permanentUploadResult.mimeType,
-        };
-        
-        logger.info(`图片已保存到永久存储: ${permanentUploadResult.url}, 文件大小: ${permanentUploadResult.size} bytes`);
-      } catch (uploadError) {
-        logger.warn('保存图片到永久存储失败，使用临时存储进行识别:', uploadError);
-        
-        // 备用方案：保存到临时存储桶
-        try {
-          const tempUploadResult = await this.fileStorageService.uploadFile(
-            req.file,
-            {
-              bucket: BUCKET_CONFIG.TEMP,
-              category: 'multimodal',
-              description: '智能记账图片识别（临时）',
-              expiresIn: 3600, // 1小时后过期
-            },
-            userId
-          );
-          logger.info(`图片已保存到临时存储: ${tempUploadResult.url}, 文件大小: ${tempUploadResult.size} bytes`);
-        } catch (tempUploadError) {
-          logger.warn('保存图片到临时存储也失败，使用原始文件进行识别:', tempUploadError);
-        }
-      }
-
-      // 3. 获取配置的提示词（复用已获取的config）
+      // 2. 获取配置的提示词
       const imageAnalysisPrompt = config.smartAccounting.imageAnalysisPrompt ||
         config.smartAccounting.multimodalPrompt ||
         '分析图片中的记账信息，提取：1.微信/支付宝付款记录：金额、收款人、备注，并从收款人分析记账类别；2.订单截图（美团/淘宝/京东/外卖/抖音）：内容、金额、时间、收件人；3.发票/票据：内容、分类、金额、时间。返回JSON格式。';
 
-      // 3. 图片识别
+      // 3. 先进行图片识别，成功后保存到S3（避免识别失败时浪费上传）
       const visionRequest: VisionRecognitionRequest = {
-        imageFile: savedImageFile,
+        imageFile: req.file,
         prompt: imageAnalysisPrompt,
         detailLevel: 'high',
       };
@@ -505,22 +438,41 @@ export class MultimodalAIController {
           error: visionResult.error || '图片识别失败',
         });
         return;
-      } else {
-        // 记录识别的文本内容
-        recognizedText = visionResult.data?.text;
+      }
+      recognizedText = visionResult.data?.text;
+
+      // 4. 识别成功后再保存图片到S3（作为附件）
+      let permanentFileInfo: any = null;
+      try {
+        const permanentUploadResult = await this.fileStorageService.uploadFile(
+          req.file,
+          {
+            bucket: BUCKET_CONFIG.ATTACHMENTS,
+            category: 'smart-accounting-images',
+            description: '智能记账上传图片',
+          },
+          userId
+        );
+        permanentFileInfo = {
+          id: permanentUploadResult.fileId,
+          url: permanentUploadResult.url,
+          size: permanentUploadResult.size,
+          filename: permanentUploadResult.filename,
+          mimeType: permanentUploadResult.mimeType,
+        };
+      } catch (uploadError) {
+        logger.warn('保存图片到存储失败，不影响识别结果:', uploadError);
       }
 
-      // 3. 返回识别结果和文件信息，前端将调用智能记账API
+      // 5. 返回识别结果和文件信息
       res.json({
         success: true,
         data: {
           text: visionResult.data?.text || '',
           confidence: visionResult.data?.confidence || 0,
           type: 'vision',
-          // 添加图片识别来源标识
           source: 'image_recognition',
           isFromImageRecognition: true,
-          // 如果成功保存到永久存储，则返回文件信息
           fileInfo: permanentFileInfo,
         },
         usage: visionResult.usage,
