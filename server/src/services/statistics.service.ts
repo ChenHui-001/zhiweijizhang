@@ -564,7 +564,7 @@ export class StatisticsService {
         amount: Number(firstBudget.amount),
         spent: Number(firstBudget.spent || 0),
         remaining: Number(firstBudget.remaining || 0),
-        percentage: Number(firstBudget.percentage || 0),
+        percentage: Number(firstBudget.progress || 0),
         rollover: Number(firstBudget.rolloverAmount || 0),
         daysRemaining: this.calculateDaysRemaining(firstBudget.endDate),
         dailySpent: this.calculateDailySpent(firstBudget.spent || 0, firstBudget.startDate),
